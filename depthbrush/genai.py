@@ -78,19 +78,25 @@ class DiffusersBackend:
                  negative: str = DEFAULT_NEGATIVE, strength: float = 0.7,
                  steps: int = 28, guidance: float = 7.5,
                  control_scale: float = 0.9, seed: int = 7,
-                 long_side: int = 768) -> Image.Image:
+                 long_side: int = 768, progress_cb=None) -> Image.Image:
         import torch
         pipe = self._load()
         size = fit_size(*image.size, long_side)
         init = image.convert("RGB").resize(size, Image.LANCZOS)
         control = depth_to_control(depth, size)
         gen = torch.Generator("cpu").manual_seed(seed)
+        extra = {}
+        if progress_cb is not None:
+            def _cb(p, step, t, kw):
+                progress_cb(step + 1)
+                return kw
+            extra["callback_on_step_end"] = _cb
         out = pipe(prompt=prompt, negative_prompt=negative,
                    image=init, control_image=control,
                    strength=strength, num_inference_steps=steps,
                    guidance_scale=guidance,
                    controlnet_conditioning_scale=float(control_scale),
-                   generator=gen)
+                   generator=gen, **extra)
         return out.images[0]
 
 
@@ -162,6 +168,23 @@ class ComfyBackend:
 
 
 BACKENDS = {"diffusers": DiffusersBackend, "comfy": ComfyBackend}
+
+
+def contact_sheet(photo: Image.Image, depth: np.ndarray,
+                  result: Image.Image, height: int = 360) -> Image.Image:
+    """photo | depth | restyled, side by side."""
+    tiles = []
+    for im in (photo.convert("RGB"),
+               Image.fromarray((depth * 255).astype("uint8")).convert("RGB"),
+               result):
+        w = int(im.size[0] * height / im.size[1])
+        tiles.append(im.resize((w, height)))
+    sheet = Image.new("RGB", (sum(t.size[0] for t in tiles), height), "white")
+    x = 0
+    for t in tiles:
+        sheet.paste(t, (x, 0))
+        x += t.size[0]
+    return sheet
 
 
 def composite_bands(images: list, depth: np.ndarray, feather: float = 0.06) -> Image.Image:

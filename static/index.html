@@ -82,7 +82,24 @@ details.band .fields { padding: 4px 12px 10px; }
       <button onclick="document.getElementById('file').click()">Browse</button>
       <input type="file" id="file" class="hidden" accept="image/*"></div>
     <div class="row"><input type="text" id="toneFrom" class="wide"
-      placeholder="tone from&hellip; (optional restyle.py output)" title="alternate tone/structure source; depth still comes from the main image"></div>
+      placeholder="tone from&hellip; (optional restyle output)" title="alternate tone/structure source; depth still comes from the main image"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>restyle (genai)</legend>
+    <div class="row"><input type="text" id="restylePrompt" class="wide"
+      placeholder="prompt&hellip;" value="expressionist brush and ink drawing, bold gestural strokes, monochrome, white paper"></div>
+    <div class="row"><label>strength (photo&rarr;dream)</label>
+      <input type="number" id="restyleStrength" value="0.7" step="0.05" min="0" max="1"></div>
+    <div class="row"><label>steps / size px</label>
+      <input type="number" id="restyleSteps" value="28" step="2" style="width:60px">
+      <input type="number" id="restyleSize" value="768" step="64" style="width:70px"></div>
+    <div class="row">
+      <button id="restyleBtn" onclick="runRestyle()" style="flex:1">Restyle</button>
+      <span id="restyleStatus" style="color:var(--dim);font-size:11px"></span></div>
+    <div class="sub" style="margin:4px 0 0">re-imagines the surface, conditioned on the photo's
+      depth; result auto-fills "tone from" &mdash; hit Render after. Depth always
+      comes from the main image.</div>
   </fieldset>
 
   <fieldset>
@@ -137,6 +154,7 @@ details.band .fields { padding: 4px 12px 10px; }
     <button data-tab="depth" onclick="setTab('depth')">Depth</button>
     <button data-tab="bands" onclick="setTab('bands')">Bands</button>
     <button data-tab="source" onclick="setTab('source')">Source</button>
+    <button data-tab="restyle" onclick="setTab('restyle')">Restyle</button>
   </div>
   <div id="layertoggles" class="hidden"></div>
   <div id="view"><div style="color:var(--dim);margin-top:80px">Pick an image, choose a preset, hit Render.</div></div>
@@ -145,7 +163,8 @@ details.band .fields { padding: 4px 12px 10px; }
 
 <script>
 let state = { session: null, files: null, layerSvgs: [], bands: [], bandFields: [],
-              genDefaults: {}, invert: false, tab: 'preview' };
+              genDefaults: {}, invert: false, tab: 'preview',
+              restyle: null };  // {session} once a restyle exists
 
 const $ = id => document.getElementById(id);
 const FLOAT_STEPS = { darkness_gamma:0.05, min_darkness:0.01, bias_strength:0.05,
@@ -400,6 +419,12 @@ function setTab(tab) {
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   $('layertoggles').classList.toggle('hidden', tab !== 'layers');
   const view = $('view');
+  if (tab === 'restyle') {
+    view.innerHTML = state.restyle
+      ? `<img class="solo" src="/files/${state.restyle.session}/restyle/compare.png?v=${state.restyle.v}">`
+      : '<div style="color:var(--dim);margin-top:80px">No restyle yet — use the restyle panel on the left.</div>';
+    return;
+  }
   if (!state.files) {
     if (tab === 'source' && $('imagePath').value)
       view.innerHTML = `<img class="solo" src="/api/source?path=${encodeURIComponent($('imagePath').value)}">`;
@@ -420,6 +445,40 @@ function setTab(tab) {
   } else {
     view.innerHTML = `<img class="solo" src="${base}${state.files[tab]}">`;
   }
+}
+
+async function runRestyle() {
+  const image = $('imagePath').value.trim();
+  if (!image) { setStatus('choose an image first', true); return; }
+  const r = await fetch('/api/restyle', { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image,
+      prompt: $('restylePrompt').value,
+      strength: parseFloat($('restyleStrength').value),
+      steps: parseInt($('restyleSteps').value),
+      size: parseInt($('restyleSize').value),
+      seed: parseInt($('seed').value) }) });
+  const d = await r.json();
+  if (d.error) { $('restyleStatus').textContent = d.error; return; }
+  $('restyleBtn').disabled = true;
+  const poll = setInterval(async () => {
+    const s = await (await fetch('/api/restyle_status')).json();
+    if (s.state === 'running' && s.steps)
+      $('restyleStatus').textContent = `step ${s.step || 0}/${s.steps}`;
+    else
+      $('restyleStatus').textContent = s.message || s.state;
+    if (s.state === 'done') {
+      clearInterval(poll);
+      $('restyleBtn').disabled = false;
+      $('toneFrom').value = s.path;
+      state.restyle = { session: s.session, v: Date.now() };
+      $('restyleStatus').textContent = 'done — tone from set, hit Render';
+      setTab('restyle');
+    } else if (s.state === 'error') {
+      clearInterval(poll);
+      $('restyleBtn').disabled = false;
+    }
+  }, 2000);
 }
 
 async function doExport() {

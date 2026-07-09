@@ -23,7 +23,8 @@ from pathlib import Path
 from PIL import Image
 
 from depthbrush.depth import estimate_depth
-from depthbrush.genai import BACKENDS, DEFAULT_NEGATIVE, composite_bands
+from depthbrush.genai import (BACKENDS, DEFAULT_NEGATIVE, composite_bands,
+                              contact_sheet)
 
 STYLE_HINT = ("monochrome ink drawing, expressive gestural strokes, "
               "high contrast, white paper")
@@ -89,21 +90,7 @@ def main():
 
     dest = out / "restyled.png"
     result.save(dest)
-
-    # side-by-side contact sheet: photo | depth | restyled
-    h = 360
-    tiles = []
-    for im in (photo.convert("RGB"),
-               Image.fromarray((depth * 255).astype("uint8")).convert("RGB"),
-               result):
-        w = int(im.size[0] * h / im.size[1])
-        tiles.append(im.resize((w, h)))
-    sheet = Image.new("RGB", (sum(t.size[0] for t in tiles), h), "white")
-    x = 0
-    for t in tiles:
-        sheet.paste(t, (x, 0))
-        x += t.size[0]
-    sheet.save(out / "compare.png")
+    contact_sheet(photo, depth, result).save(out / "compare.png")
 
     print(f"\nrestyled -> {dest}")
     print(f"compare  -> {out / 'compare.png'}")

@@ -12,6 +12,7 @@ import dataclasses
 import hashlib
 import json
 import shutil
+import threading
 import time
 from pathlib import Path
 
@@ -141,6 +142,69 @@ def render():
 @app.get("/files/<session>/<path:name>")
 def files(session, name):
     return send_from_directory(SESSIONS / session, name)
+
+
+# ------------------------------------------------------------- genai restyle
+# one restyle at a time; the diffusion model stays loaded between runs
+RESTYLE = {"state": "idle"}
+_restyle_backend = None
+_restyle_lock = threading.Lock()
+
+
+def _restyle_worker(image_path: str, p: dict):
+    global _restyle_backend
+    try:
+        from PIL import Image
+
+        from depthbrush.depth import estimate_depth
+        from depthbrush.genai import DiffusersBackend, contact_sheet
+
+        RESTYLE.update(state="loading",
+                       message="loading depth + diffusion model…")
+        depth = estimate_depth(image_path, Config().depth_model,
+                               cache_dir=str(DEPTH_CACHE))
+        if _restyle_backend is None:
+            _restyle_backend = DiffusersBackend()
+        photo = Image.open(image_path)
+        steps = int(p.get("steps", 28))
+        RESTYLE.update(state="running", step=0, steps=steps,
+                       message="generating…")
+        img = _restyle_backend.generate(
+            photo, depth, p.get("prompt", ""),
+            strength=float(p.get("strength", 0.7)), steps=steps,
+            control_scale=float(p.get("control", 0.9)),
+            seed=int(p.get("seed", 7)), long_side=int(p.get("size", 768)),
+            progress_cb=lambda s: RESTYLE.update(step=s))
+        rd = session_dir(image_path) / "restyle"
+        rd.mkdir(parents=True, exist_ok=True)
+        img.save(rd / "restyled.png")
+        contact_sheet(photo, depth, img).save(rd / "compare.png")
+        RESTYLE.update(state="done", path=str(rd / "restyled.png"),
+                       session=rd.parent.name, message="restyle complete")
+    except Exception as e:
+        RESTYLE.update(state="error", message=f"{type(e).__name__}: {e}")
+    finally:
+        _restyle_lock.release()
+
+
+@app.post("/api/restyle")
+def restyle():
+    req = request.get_json()
+    image_path = req.get("image", "")
+    if not Path(image_path).exists():
+        return jsonify({"error": f"image not found: {image_path}"}), 400
+    if not _restyle_lock.acquire(blocking=False):
+        return jsonify({"error": "a restyle is already running"}), 409
+    RESTYLE.clear()
+    RESTYLE.update(state="starting")
+    threading.Thread(target=_restyle_worker, args=(image_path, req),
+                     daemon=True).start()
+    return jsonify({"started": True})
+
+
+@app.get("/api/restyle_status")
+def restyle_status():
+    return jsonify(RESTYLE)
 
 
 @app.post("/api/save_preset")

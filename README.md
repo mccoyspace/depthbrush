@@ -194,7 +194,16 @@ python3 main.py garden.jpg --tone-from out/garden_restyle/restyled.png --preset 
   workflow is an API-format export with `__PROMPT__` / `__NEGATIVE__` /
   `__SEED__` / `__INIT_IMAGE__` / `__DEPTH_IMAGE__` placeholders — intended
   for an RTX 3060 / DGX Spark / Jetson box on the studio network).
-- In the UI, put the restyled path in the **tone from…** field.
+- **In the UI**: the *restyle (genai)* panel runs the whole thing — prompt,
+  strength, steps/size, Restyle button with step progress; when it finishes,
+  the **tone from…** field is auto-filled and the Restyle tab shows the
+  photo | depth | restyled contact sheet. Then just hit Render. The model
+  stays loaded between runs, so later restyles skip the load time.
+- Important: the main **image** field should always be the *photograph* —
+  depth banding comes from it. Don't point the image field at a restyled
+  output: depth estimated from an abstract painting produces meaningless
+  bands. The restyle result belongs in **tone from…** (which the UI now
+  handles for you).
 
 ## Ideas not yet built
 
