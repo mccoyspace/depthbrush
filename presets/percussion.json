@@ -1,42 +1,101 @@
 {
+  "title": "percussion (Immendorff)",
   "description": "Stochastic percussion: brush-dab spatter fields with aggressive lash darts over a finely hatched near figure (after Immendorff '97).",
-  "config": {"band_feather": 0.06, "reserve_halo_mm": 2.5, "invert": false},
+  "config": {
+    "band_feather": 0.06,
+    "reserve_halo_mm": 2.5,
+    "invert": false
+  },
   "bands": [
     {
-      "name": "far", "tool": "brush", "feed": 1600,
-      "blur_mm": 7.0, "darkness_gamma": 1.6, "min_darkness": 0.14,
+      "name": "far",
+      "tool": "brush",
+      "feed": 1600,
+      "blur_mm": 7.0,
+      "darkness_gamma": 1.6,
+      "min_darkness": 0.14,
       "generators": [
-        {"type": "stipple", "dabs": true, "spacing_min_mm": 3.0,
-         "spacing_max_mm": 9.0, "dab_mm": 1.4, "max_dabs": 2200,
-         "seed_attempts": 16000}
+        {
+          "type": "stipple",
+          "dabs": true,
+          "spacing_min_mm": 3.0,
+          "spacing_max_mm": 9.0,
+          "dab_mm": 1.4,
+          "max_dabs": 2200,
+          "seed_attempts": 16000
+        }
       ]
     },
     {
-      "name": "mid", "tool": "brush", "feed": 1600,
-      "blur_mm": 2.5, "darkness_gamma": 1.35, "min_darkness": 0.11,
+      "name": "mid",
+      "tool": "brush",
+      "feed": 1600,
+      "blur_mm": 2.5,
+      "darkness_gamma": 1.35,
+      "min_darkness": 0.11,
       "generators": [
-        {"type": "stipple", "dabs": true, "spacing_min_mm": 2.0,
-         "spacing_max_mm": 6.5, "dab_mm": 1.7, "max_dabs": 3800,
-         "seed_attempts": 20000},
-        {"type": "stipple", "dabs": false, "lashes": true,
-         "lash_threshold": 0.55, "lash_min_mm": 5.0, "lash_max_mm": 14.0,
-         "max_lashes": 500, "bias_angle_deg": -50.0, "bias_strength": 0.5}
+        {
+          "type": "stipple",
+          "dabs": true,
+          "spacing_min_mm": 2.0,
+          "spacing_max_mm": 6.5,
+          "dab_mm": 1.7,
+          "max_dabs": 3800,
+          "seed_attempts": 20000
+        },
+        {
+          "type": "stipple",
+          "dabs": false,
+          "lashes": true,
+          "lash_threshold": 0.55,
+          "lash_min_mm": 5.0,
+          "lash_max_mm": 14.0,
+          "max_lashes": 500,
+          "bias_angle_deg": -50.0,
+          "bias_strength": 0.5
+        }
       ]
     },
     {
-      "name": "near", "tool": "pen", "feed": 2400,
-      "blur_mm": 0.6, "darkness_gamma": 1.15, "min_darkness": 0.08,
+      "name": "near",
+      "tool": "pen",
+      "feed": 2400,
+      "blur_mm": 0.6,
+      "darkness_gamma": 1.15,
+      "min_darkness": 0.08,
       "generators": [
-        {"type": "hatch", "spacing_min_mm": 0.9, "spacing_max_mm": 3.2,
-         "step_mm": 0.6, "max_len_mm": 20.0, "min_len_mm": 2.5,
-         "bias_angle_deg": -35.0, "bias_strength": 0.15,
-         "wobble_amp_mm": 0.12, "wobble_wavelength_mm": 7.0,
-         "max_strokes": 5000, "seed_attempts": 24000},
-        {"type": "stipple", "dabs": false, "lashes": true,
-         "lash_threshold": 0.6, "lash_min_mm": 4.0, "lash_max_mm": 10.0,
-         "max_lashes": 400, "bias_angle_deg": -35.0, "bias_strength": 0.3},
-        {"type": "contour", "passes": 1, "min_len_mm": 10.0, "step_mm": 0.7,
-         "smooth_mm": 1.0}
+        {
+          "type": "hatch",
+          "spacing_min_mm": 0.9,
+          "spacing_max_mm": 3.2,
+          "step_mm": 0.6,
+          "max_len_mm": 20.0,
+          "min_len_mm": 2.5,
+          "bias_angle_deg": -35.0,
+          "bias_strength": 0.15,
+          "wobble_amp_mm": 0.12,
+          "wobble_wavelength_mm": 7.0,
+          "max_strokes": 5000,
+          "seed_attempts": 24000
+        },
+        {
+          "type": "stipple",
+          "dabs": false,
+          "lashes": true,
+          "lash_threshold": 0.6,
+          "lash_min_mm": 4.0,
+          "lash_max_mm": 10.0,
+          "max_lashes": 400,
+          "bias_angle_deg": -35.0,
+          "bias_strength": 0.3
+        },
+        {
+          "type": "contour",
+          "passes": 1,
+          "min_len_mm": 10.0,
+          "step_mm": 0.7,
+          "smooth_mm": 1.0
+        }
       ]
     }
   ]

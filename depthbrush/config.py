@@ -30,12 +30,13 @@ class BandStyle:
 
 
 def list_presets() -> list:
-    """[{name, description}, ...] for every presets/*.json."""
+    """[{name, title, description}, ...] for every presets/*.json."""
     out = []
     for f in sorted(PRESET_DIR.glob("*.json")):
         try:
             d = json.loads(f.read_text())
-            out.append({"name": f.stem, "description": d.get("description", "")})
+            out.append({"name": f.stem, "title": d.get("title", f.stem),
+                        "description": d.get("description", "")})
         except Exception:
             continue
     return out
@@ -47,6 +48,12 @@ def load_preset(name: str) -> dict:
         known = ", ".join(p["name"] for p in list_presets())
         raise FileNotFoundError(f"no preset '{name}' (have: {known})")
     return json.loads(f.read_text())
+
+
+def _band_style(b: dict) -> "BandStyle":
+    fields = {k: v for k, v in b.items() if k in BandStyle.__dataclass_fields__}
+    fields["generators"] = copy.deepcopy(b.get("generators", []))
+    return BandStyle(**fields)
 
 
 def _scale_mm(obj, k: float):
@@ -94,18 +101,30 @@ class Config:
     @classmethod
     def from_preset(cls, name: str = "classic", n_bands: int | None = None,
                     **overrides) -> "Config":
-        """Build a Config from presets/<name>.json; kwargs override."""
-        preset = load_preset(name)
-        pc = preset.get("config", {})
-        styles = [BandStyle(**{**b, "generators": b.get("generators", [])})
-                  for b in preset["bands"]]
-        if n_bands and n_bands != len(styles):
-            # resample the band list to the requested count (nearest band)
-            idx = [round(i * (len(styles) - 1) / max(1, n_bands - 1))
-                   for i in range(n_bands)]
-            styles = [copy.deepcopy(styles[j]) for j in idx]
-            for i, s in enumerate(styles):
-                s.name = f"{s.name}{i}" if n_bands > len(set(j for j in idx)) else s.name
+        """Build a Config from presets/<name>.json; kwargs override.
+
+        `name` may be comma-separated ("glyphic,economy,restated"): band i of
+        the composite comes from preset i (its band at the matching depth
+        position), and global config (invert, feather, halo) comes from the
+        FIRST preset. With a composite, band count = number of names.
+        """
+        names = [n.strip() for n in str(name).split(",") if n.strip()] or ["classic"]
+        presets = [load_preset(n) for n in names]
+        if len(presets) == 1:
+            styles = [_band_style(b) for b in presets[0]["bands"]]
+            if n_bands and n_bands != len(styles):
+                # resample the band list to the requested count (nearest band)
+                idx = [round(i * (len(styles) - 1) / max(1, n_bands - 1))
+                       for i in range(n_bands)]
+                styles = [copy.deepcopy(styles[j]) for j in idx]
+        else:
+            n_out = len(presets)
+            styles = []
+            for i, p in enumerate(presets):
+                bands = p["bands"]
+                j = round(i * (len(bands) - 1) / max(1, n_out - 1))
+                styles.append(_band_style(bands[j]))
+        pc = presets[0].get("config", {})
         kwargs = {k: v for k, v in pc.items() if k in cls.__dataclass_fields__}
         kwargs.update({k: v for k, v in overrides.items() if v is not None})
         kwargs["styles"] = styles

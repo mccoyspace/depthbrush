@@ -13,12 +13,18 @@ and named collections of bands + generators are **presets** (`presets/*.json`):
 | preset | idea |
 |---|---|
 | `classic` | pale far washes, mid hatching + iso-depth contours, dense near hatching |
-| `glyphic` | dark masses become blunt stick armatures; tone becomes an alphabet of signs |
-| `restated` | every contour attempted 3–5 times, angular, off-register — the line vibrates |
-| `scribble` | momentum random-walks attracted to darkness; loops, bursts, spiral fills |
-| `percussion` | brush-dab spatter fields and lash darts over a finely hatched near figure |
-| `economy` | a few slow sinuous contours and vast reserves of empty paper |
-| `excavation` | inverted: strokes seed on the *lights* — plot white ink on black paper |
+| `glyphic` (Penck) | dark masses become blunt stick armatures; tone becomes an alphabet of signs |
+| `restated` (Baselitz) | every contour attempted 3–5 times, angular, off-register — the line vibrates |
+| `scribble` (Penck / Basquiat) | momentum random-walks attracted to darkness; loops, bursts, spiral fills |
+| `percussion` (Immendorff) | brush-dab spatter fields and lash darts over a finely hatched near figure |
+| `economy` (Clemente) | a few slow sinuous contours and vast reserves of empty paper |
+| `excavation` (Baselitz) | inverted: strokes seed on the *lights* — plot white ink on black paper |
+
+Presets mix **per band**: on the CLI, comma-separate far→near
+(`--preset "glyphic,economy,restated"` = glyphic sky, economy midground,
+restated foreground; global config comes from the first name). In the UI,
+each band panel has a "band style from" selector that pulls just that band's
+definition from any preset.
 
 Generators (`depthbrush/generators.py`): `hatch` (evenly-spaced flow-field
 streamlines), `iso_depth` (level sets of the depth map), `contour` (band

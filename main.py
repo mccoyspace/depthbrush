@@ -25,7 +25,9 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("image", nargs="?")
     ap.add_argument("--preset", default="classic",
-                    help="mark-vocabulary preset (see --list-presets)")
+                    help="mark-vocabulary preset (see --list-presets); "
+                         "comma-separate to mix per band far->near, e.g. "
+                         "'glyphic,economy,restated'")
     ap.add_argument("--list-presets", action="store_true")
     ap.add_argument("--out", default=None, help="output directory (default: out/<image stem>)")
     ap.add_argument("--paper", default="420x297", help="paper WxH in mm")
@@ -51,7 +53,7 @@ def main():
 
     if args.list_presets:
         for p in list_presets():
-            print(f"  {p['name']:<12} {p['description']}")
+            print(f"  {p['title']:<28} {p['description']}")
         return
     if not args.image:
         ap.error("image is required (or use --list-presets)")
@@ -64,7 +66,8 @@ def main():
         invert=args.invert, focus=args.focus, defocus_strength=args.defocus,
         px_per_mm=args.ppm, mark_scale=args.scale)
 
-    out = args.out or str(Path("out") / f"{Path(args.image).stem}_{args.preset}")
+    slug = args.preset.replace(",", "+").replace(" ", "")
+    out = args.out or str(Path("out") / f"{Path(args.image).stem}_{slug}")
     run(args.image, out, cfg, seed=args.seed)
 
 

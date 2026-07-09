@@ -154,17 +154,28 @@ const FLOAT_STEPS = { darkness_gamma:0.05, min_darkness:0.01, bias_strength:0.05
 
 async function loadPresetList() {
   const r = await fetch('/api/presets');
-  const list = await r.json();
+  state.presetList = await r.json();
   const sel = $('preset');
   sel.innerHTML = '';
-  list.forEach(p => {
+  state.presetList.forEach(p => {
     const o = document.createElement('option');
-    o.value = p.name; o.textContent = p.name; o.title = p.description;
+    o.value = p.name; o.textContent = p.title || p.name; o.title = p.description;
     sel.appendChild(o);
   });
   sel.value = 'classic';
   sel.onchange = () => loadDefaults(sel.value);
   await loadDefaults('classic');
+}
+
+async function pullBand(i, presetName) {
+  // replace just band i with the matching-depth band from another preset
+  const r = await fetch('/api/defaults?preset=' + encodeURIComponent(presetName));
+  const d = await r.json();
+  const src = d.bands;
+  const j = Math.round(i * (src.length - 1) / Math.max(1, state.bands.length - 1));
+  state.bands[i] = src[j];
+  buildBandPanels();
+  document.querySelectorAll('#bands details')[i].open = true;
 }
 
 async function loadDefaults(preset) {
@@ -229,6 +240,23 @@ function buildBandPanels() {
     det.appendChild(sum);
     const box = document.createElement('div');
     box.className = 'fields';
+    // pull this band's whole definition from another preset
+    const pull = document.createElement('div');
+    pull.className = 'row';
+    const plab = document.createElement('label');
+    plab.textContent = 'band style from';
+    const psel = document.createElement('select');
+    const ph = document.createElement('option');
+    ph.value = ''; ph.textContent = '— preset —';
+    psel.appendChild(ph);
+    (state.presetList || []).forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.name; o.textContent = p.title || p.name;
+      psel.appendChild(o);
+    });
+    psel.onchange = () => { if (psel.value) pullBand(i, psel.value); };
+    pull.appendChild(plab); pull.appendChild(psel);
+    box.appendChild(pull);
     state.bandFields.forEach(f => {
       if (f in b) box.appendChild(paramRow(b, f, b[f], buildSummaries));
     });

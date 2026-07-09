@@ -1,41 +1,92 @@
 {
-  "description": "White-line excavation: the drawing is scratched out of a black field — plot light ink on black-primed paper; strokes seed on the LIGHTS (after Baselitz's woodcuts). Inverted mode.",
-  "config": {"band_feather": 0.06, "reserve_halo_mm": 2.0, "invert": true},
+  "title": "excavation (Baselitz)",
+  "description": "White-line excavation: the drawing is scratched out of a black field \u2014 plot light ink on black-primed paper; strokes seed on the LIGHTS (after Baselitz's woodcuts). Inverted mode.",
+  "config": {
+    "band_feather": 0.06,
+    "reserve_halo_mm": 2.0,
+    "invert": true
+  },
   "bands": [
     {
-      "name": "far", "tool": "brush", "feed": 1400,
-      "blur_mm": 7.0, "darkness_gamma": 1.9, "min_darkness": 0.2,
+      "name": "far",
+      "tool": "brush",
+      "feed": 1400,
+      "blur_mm": 7.0,
+      "darkness_gamma": 1.9,
+      "min_darkness": 0.2,
       "generators": [
-        {"type": "hatch", "spacing_min_mm": 3.0, "spacing_max_mm": 9.0,
-         "step_mm": 1.4, "max_len_mm": 120.0, "min_len_mm": 20.0,
-         "bias_angle_deg": 80.0, "bias_strength": 0.55,
-         "wobble_amp_mm": 0.5, "wobble_wavelength_mm": 30.0,
-         "max_strokes": 240, "seed_attempts": 6000}
+        {
+          "type": "hatch",
+          "spacing_min_mm": 3.0,
+          "spacing_max_mm": 9.0,
+          "step_mm": 1.4,
+          "max_len_mm": 120.0,
+          "min_len_mm": 20.0,
+          "bias_angle_deg": 80.0,
+          "bias_strength": 0.55,
+          "wobble_amp_mm": 0.5,
+          "wobble_wavelength_mm": 30.0,
+          "max_strokes": 240,
+          "seed_attempts": 6000
+        }
       ]
     },
     {
-      "name": "mid", "tool": "brush", "feed": 1700,
-      "blur_mm": 2.5, "darkness_gamma": 1.5, "min_darkness": 0.13,
+      "name": "mid",
+      "tool": "brush",
+      "feed": 1700,
+      "blur_mm": 2.5,
+      "darkness_gamma": 1.5,
+      "min_darkness": 0.13,
       "generators": [
-        {"type": "hatch", "spacing_min_mm": 1.8, "spacing_max_mm": 5.5,
-         "step_mm": 1.2, "max_len_mm": 60.0, "min_len_mm": 8.0,
-         "bias_angle_deg": 70.0, "bias_strength": 0.35,
-         "wobble_amp_mm": 0.3, "wobble_wavelength_mm": 12.0,
-         "max_strokes": 1100, "seed_attempts": 11000}
+        {
+          "type": "hatch",
+          "spacing_min_mm": 1.8,
+          "spacing_max_mm": 5.5,
+          "step_mm": 1.2,
+          "max_len_mm": 60.0,
+          "min_len_mm": 8.0,
+          "bias_angle_deg": 70.0,
+          "bias_strength": 0.35,
+          "wobble_amp_mm": 0.3,
+          "wobble_wavelength_mm": 12.0,
+          "max_strokes": 1100,
+          "seed_attempts": 11000
+        }
       ]
     },
     {
-      "name": "near", "tool": "pen", "feed": 2400,
-      "blur_mm": 0.8, "darkness_gamma": 1.2, "min_darkness": 0.09,
+      "name": "near",
+      "tool": "pen",
+      "feed": 2400,
+      "blur_mm": 0.8,
+      "darkness_gamma": 1.2,
+      "min_darkness": 0.09,
       "generators": [
-        {"type": "hatch", "spacing_min_mm": 1.0, "spacing_max_mm": 3.5,
-         "step_mm": 0.9, "max_len_mm": 30.0, "min_len_mm": 4.0,
-         "bias_angle_deg": 60.0, "bias_strength": 0.3,
-         "wobble_amp_mm": 0.2, "wobble_wavelength_mm": 8.0,
-         "max_strokes": 4200, "seed_attempts": 20000},
-        {"type": "contour", "passes": 2, "offset_mm": 1.2, "trim": 0.4,
-         "angular": true, "min_len_mm": 12.0, "step_mm": 0.9,
-         "smooth_mm": 1.2}
+        {
+          "type": "hatch",
+          "spacing_min_mm": 1.0,
+          "spacing_max_mm": 3.5,
+          "step_mm": 0.9,
+          "max_len_mm": 30.0,
+          "min_len_mm": 4.0,
+          "bias_angle_deg": 60.0,
+          "bias_strength": 0.3,
+          "wobble_amp_mm": 0.2,
+          "wobble_wavelength_mm": 8.0,
+          "max_strokes": 4200,
+          "seed_attempts": 20000
+        },
+        {
+          "type": "contour",
+          "passes": 2,
+          "offset_mm": 1.2,
+          "trim": 0.4,
+          "angular": true,
+          "min_len_mm": 12.0,
+          "step_mm": 0.9,
+          "smooth_mm": 1.2
+        }
       ]
     }
   ]
