@@ -1,0 +1,23 @@
+# generated renders (per-run, large)
+out/
+ui_sessions/
+
+# depth-map + model caches
+**/.cache/
+.depthcache/
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# extra test photos (keep only garden.jpg as the sample)
+garden2.jpg
+garden3.jpg
+
+# macos / editors
+.DS_Store
+.idea/
+.vscode/

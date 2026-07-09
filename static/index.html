@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>depthbrush</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root {
+  --bg: #16171a; --panel: #1f2126; --panel2: #26292f; --line: #33363d;
+  --text: #d6d8dd; --dim: #8b8f98; --accent: #7fa8d9; --accent2: #d9a87f;
+  --err: #d97f7f;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 13px/1.45 -apple-system, "Helvetica Neue", sans-serif; display: flex; height: 100vh; }
+#sidebar { width: 360px; min-width: 360px; background: var(--panel);
+  border-right: 1px solid var(--line); overflow-y: auto; padding: 14px; }
+#main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+h1 { font-size: 15px; margin: 0 0 2px; letter-spacing: .12em; font-weight: 600; }
+h1 span { color: var(--accent); }
+.sub { color: var(--dim); font-size: 11px; margin-bottom: 14px; }
+fieldset { border: 1px solid var(--line); border-radius: 6px; margin: 0 0 12px; padding: 10px 12px; }
+legend { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 0 5px; }
+.row { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+.row label { flex: 1; color: var(--dim); }
+.row input[type=number], .row input[type=text], .row select {
+  width: 92px; background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+  border-radius: 4px; padding: 4px 6px; font: inherit; }
+.row input[type=text].wide { width: 100%; flex: 2.2; }
+.row input[type=range] { flex: 1.4; accent-color: var(--accent); }
+.row input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; }
+button { background: var(--panel2); color: var(--text); border: 1px solid var(--line);
+  border-radius: 5px; padding: 6px 12px; font: inherit; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button.primary { background: var(--accent); color: #16171a; font-weight: 600; border: none;
+  width: 100%; padding: 10px; font-size: 14px; }
+button.primary:disabled { opacity: .45; cursor: wait; }
+details.band { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 8px; background: var(--panel2); }
+details.band summary { cursor: pointer; padding: 8px 12px; font-weight: 600; }
+details.band summary small { color: var(--dim); font-weight: 400; margin-left: 6px; }
+details.band .fields { padding: 4px 12px 10px; }
+#tabs { display: flex; gap: 2px; padding: 10px 14px 0; border-bottom: 1px solid var(--line); }
+#tabs button { border-radius: 6px 6px 0 0; border-bottom: none; color: var(--dim); }
+#tabs button.active { color: var(--text); background: var(--panel); border-color: var(--accent); }
+#view { flex: 1; overflow: auto; padding: 16px; display: flex;
+  align-items: flex-start; justify-content: center; background: #101114; }
+#view img.solo { max-width: 100%; box-shadow: 0 4px 30px rgba(0,0,0,.5); }
+#stack { position: relative; background: white; box-shadow: 0 4px 30px rgba(0,0,0,.5); }
+#stack img { display: block; max-width: 100%; }
+#stack img.over { position: absolute; inset: 0; mix-blend-mode: multiply; }
+#statusbar { padding: 8px 14px; border-top: 1px solid var(--line); background: var(--panel);
+  display: flex; gap: 18px; align-items: center; font-size: 12px; min-height: 38px; flex-wrap: wrap; }
+#statusbar .err { color: var(--err); }
+#stats { color: var(--dim); }
+#stats b { color: var(--text); font-weight: 600; }
+#layertoggles { display: flex; gap: 14px; padding: 8px 14px 0; color: var(--dim); }
+#layertoggles label { display: flex; gap: 5px; align-items: center; cursor: pointer; }
+.hidden { display: none !important; }
+#exportmsg { color: var(--accent2); }
+.dice { padding: 4px 8px; }
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <h1>depth<span>brush</span></h1>
+  <div class="sub">depth-layered gestural plotter renderer</div>
+
+  <fieldset>
+    <legend>image</legend>
+    <div class="row"><input type="text" id="imagePath" class="wide" placeholder="/path/to/photo.jpg">
+      <button onclick="document.getElementById('file').click()">Browse</button>
+      <input type="file" id="file" class="hidden" accept="image/*"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>paper &amp; scale</legend>
+    <div class="row"><label>paper w &times; h (mm)</label>
+      <input type="number" id="paper_w" value="420" step="10">
+      <input type="number" id="paper_h" value="297" step="10"></div>
+    <div class="row"><label>margin (mm)</label><input type="number" id="margin" value="25" step="5"></div>
+    <div class="row"><label>mark scale</label><input type="number" id="mark_scale" value="1" step="0.1"></div>
+    <div class="row"><label>px per mm</label><input type="number" id="px_per_mm" value="1" step="0.5"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>depth layering</legend>
+    <div class="row"><label>bands</label><input type="number" id="n_bands" value="3" min="2" max="5" step="1"></div>
+    <div class="row"><label>feather</label><input type="number" id="band_feather" value="0.06" step="0.01"></div>
+    <div class="row"><label>reserve halo (mm)</label><input type="number" id="reserve_halo_mm" value="2" step="0.5"></div>
+    <div class="row"><label>focal plane</label><input type="checkbox" id="focus_on">
+      <input type="range" id="focus" min="0" max="1" step="0.01" value="0.8" disabled>
+      <span id="focusval" style="width:30px;color:var(--dim)">0.80</span></div>
+    <div class="row"><label>defocus strength</label><input type="number" id="defocus_strength" value="1" step="0.1"></div>
+    <div class="row"><label>seed</label><input type="number" id="seed" value="7" step="1">
+      <button class="dice" onclick="rollSeed()" title="random seed">&#127922;</button></div>
+  </fieldset>
+
+  <div id="bands"></div>
+
+  <button class="primary" id="renderBtn" onclick="render()">Render &nbsp;&#8984;&#9166;</button>
+
+  <fieldset style="margin-top:12px">
+    <legend>export</legend>
+    <div class="row"><input type="text" id="exportName" class="wide" placeholder="name (out/&lt;name&gt;/)">
+      <button onclick="doExport()">Export</button></div>
+    <div id="exportmsg"></div>
+  </fieldset>
+</div>
+
+<div id="main">
+  <div id="tabs">
+    <button data-tab="preview" class="active" onclick="setTab('preview')">Preview</button>
+    <button data-tab="layers" onclick="setTab('layers')">Layers</button>
+    <button data-tab="depth" onclick="setTab('depth')">Depth</button>
+    <button data-tab="bands" onclick="setTab('bands')">Bands</button>
+    <button data-tab="source" onclick="setTab('source')">Source</button>
+  </div>
+  <div id="layertoggles" class="hidden"></div>
+  <div id="view"><div style="color:var(--dim);margin-top:80px">Pick an image and hit Render.</div></div>
+  <div id="statusbar"><span id="status">idle</span><span id="stats"></span></div>
+</div>
+
+<script>
+let state = { session: null, files: null, layerSvgs: [], styleFields: [], styles: [], tab: 'preview' };
+
+const $ = id => document.getElementById(id);
+const FLOAT_STEPS = { darkness_gamma:0.05, min_darkness:0.01, bias_strength:0.05,
+  cross_hatch_threshold:0.02, wobble_amp_mm:0.05, step_mm:0.1, spacing_min_mm:0.1,
+  spacing_max_mm:0.1, blur_mm:0.5, min_len_mm:0.5, max_len_mm:5, wobble_wavelength_mm:1,
+  bias_angle_deg:5, cross_hatch_angle_deg:5, feed:100 };
+
+async function loadDefaults(nBands) {
+  const r = await fetch('/api/defaults?bands=' + nBands);
+  const d = await r.json();
+  state.styleFields = d.style_fields;
+  state.styles = d.styles;
+  buildBandPanels();
+}
+
+function buildBandPanels() {
+  const holder = $('bands');
+  holder.innerHTML = '';
+  state.styles.forEach((s, i) => {
+    const det = document.createElement('details');
+    det.className = 'band';
+    if (i === state.styles.length - 1) det.open = false;
+    const sum = document.createElement('summary');
+    sum.innerHTML = `band ${i} &mdash; ${s.name} <small>${s.tool}</small>`;
+    det.appendChild(sum);
+    const box = document.createElement('div');
+    box.className = 'fields';
+    state.styleFields.forEach(f => {
+      const v = s[f];
+      const row = document.createElement('div');
+      row.className = 'row';
+      const lab = document.createElement('label');
+      lab.textContent = f.replaceAll('_', ' ');
+      row.appendChild(lab);
+      let inp;
+      if (typeof v === 'boolean') {
+        inp = document.createElement('input'); inp.type = 'checkbox'; inp.checked = v;
+        inp.onchange = () => { state.styles[i][f] = inp.checked; };
+      } else if (f === 'tool') {
+        inp = document.createElement('select');
+        ['brush', 'pen'].forEach(t => { const o = document.createElement('option'); o.value = o.textContent = t; inp.appendChild(o); });
+        inp.value = v;
+        inp.onchange = () => { state.styles[i][f] = inp.value; };
+      } else {
+        inp = document.createElement('input'); inp.type = 'number'; inp.value = v;
+        inp.step = Number.isInteger(v) && !(f in FLOAT_STEPS) ? 1 : (FLOAT_STEPS[f] || 0.1);
+        inp.onchange = () => { state.styles[i][f] = parseFloat(inp.value); };
+      }
+      row.appendChild(inp);
+      box.appendChild(row);
+    });
+    det.appendChild(box);
+    holder.appendChild(det);
+  });
+}
+
+$('n_bands').onchange = () => loadDefaults(parseInt($('n_bands').value));
+$('focus_on').onchange = () => { $('focus').disabled = !$('focus_on').checked; };
+$('focus').oninput = () => { $('focusval').textContent = parseFloat($('focus').value).toFixed(2); };
+$('file').onchange = async () => {
+  const fd = new FormData();
+  fd.append('image', $('file').files[0]);
+  const r = await fetch('/api/upload', { method: 'POST', body: fd });
+  $('imagePath').value = (await r.json()).path;
+};
+function rollSeed() { $('seed').value = Math.floor(Math.random() * 10000); }
+document.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') render();
+});
+
+async function render() {
+  const image = $('imagePath').value.trim();
+  if (!image) { setStatus('choose an image first', true); return; }
+  const cfg = {};
+  ['paper_w','paper_h','margin','mark_scale','px_per_mm','n_bands','band_feather',
+   'reserve_halo_mm','defocus_strength'].forEach(k => cfg[k] = parseFloat($(k).value));
+  cfg.focus = $('focus_on').checked ? parseFloat($('focus').value) : null;
+
+  $('renderBtn').disabled = true;
+  setStatus('rendering&hellip;');
+  const t0 = performance.now();
+  try {
+    const r = await fetch('/api/render', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image, config: cfg, styles: state.styles, seed: parseInt($('seed').value) }) });
+    const d = await r.json();
+    if (d.error) { setStatus(d.error, true); return; }
+    state.session = d.session; state.files = d.files; state.layerSvgs = d.layer_svgs;
+    const total = d.manifest.layers.reduce((a, l) => a + l.est_min, 0);
+    const draw = d.manifest.layers.reduce((a, l) => a + l.draw_mm, 0);
+    $('stats').innerHTML = d.manifest.layers.map(l =>
+      `${l.name}: <b>${l.paths}</b> paths &middot; ${(l.draw_mm/1000).toFixed(1)}m`).join(' &nbsp;|&nbsp; ')
+      + ` &nbsp;|&nbsp; total <b>${(draw/1000).toFixed(1)}m</b>, ~<b>${total.toFixed(0)}min</b> plot`;
+    setStatus(`rendered in ${d.elapsed}s`);
+    buildLayerToggles();
+    setTab(state.tab);
+  } catch (e) { setStatus(String(e), true); }
+  finally { $('renderBtn').disabled = false; }
+}
+
+function setStatus(msg, err) { $('status').innerHTML = err ? `<span class="err">${msg}</span>` : msg; }
+
+function buildLayerToggles() {
+  const holder = $('layertoggles');
+  holder.innerHTML = '';
+  state.layerSvgs.forEach((f, i) => {
+    const lab = document.createElement('label');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = true;
+    cb.onchange = () => { const im = $('layer_img_' + i); if (im) im.style.visibility = cb.checked ? 'visible' : 'hidden'; };
+    lab.appendChild(cb);
+    lab.appendChild(document.createTextNode(f.split('?')[0].replace('.svg', '')));
+    holder.appendChild(lab);
+  });
+}
+
+function setTab(tab) {
+  state.tab = tab;
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  $('layertoggles').classList.toggle('hidden', tab !== 'layers');
+  const view = $('view');
+  if (!state.files) {
+    if (tab === 'source' && $('imagePath').value)
+      view.innerHTML = `<img class="solo" src="/api/source?path=${encodeURIComponent($('imagePath').value)}">`;
+    return;
+  }
+  const base = `/files/${state.session}/`;
+  if (tab === 'layers') {
+    let html = '<div id="stack">';
+    state.layerSvgs.forEach((f, i) => {
+      html += `<img id="layer_img_${i}" class="${i ? 'over' : ''}" src="${base}${f}">`;
+    });
+    view.innerHTML = html + '</div>';
+    document.querySelectorAll('#layertoggles input').forEach((cb, i) => {
+      const im = $('layer_img_' + i); if (im) im.style.visibility = cb.checked ? 'visible' : 'hidden';
+    });
+  } else if (tab === 'source') {
+    view.innerHTML = `<img class="solo" src="/api/source?path=${encodeURIComponent($('imagePath').value)}">`;
+  } else {
+    view.innerHTML = `<img class="solo" src="${base}${state.files[tab]}">`;
+  }
+}
+
+async function doExport() {
+  if (!state.session) { setStatus('render something first', true); return; }
+  const r = await fetch('/api/export', { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session: state.session, name: $('exportName').value }) });
+  const d = await r.json();
+  $('exportmsg').textContent = 'saved → ' + d.path;
+}
+
+loadDefaults(3);
+</script>
+</body>
+</html>

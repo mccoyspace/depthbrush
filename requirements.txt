@@ -1,0 +1,14 @@
+# depthbrush dependencies
+# depth estimation runs on Apple Silicon via torch MPS
+torch>=2.2
+transformers>=4.40
+huggingface_hub>=0.23
+opencv-python>=4.9
+numpy>=1.24
+Pillow>=10.0
+
+# UI
+Flask>=3.0
+
+# remote streaming to the GRBL plotter server
+websockets>=12.0
