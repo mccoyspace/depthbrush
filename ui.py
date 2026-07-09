@@ -10,13 +10,15 @@ cache) and are only copied to out/<name>/ when you hit Export.
 import argparse
 import dataclasses
 import hashlib
+import json
 import shutil
 import time
 from pathlib import Path
 
 from flask import Flask, jsonify, request, send_file, send_from_directory
 
-from depthbrush.config import BandStyle, Config, list_presets, load_preset
+from depthbrush.config import (LEARNED_DIR, BandStyle, Config, list_presets,
+                               load_preset)
 from depthbrush.generators import DEFAULT_PARAMS
 from depthbrush.pipeline import run
 
@@ -138,6 +140,28 @@ def render():
 @app.get("/files/<session>/<path:name>")
 def files(session, name):
     return send_from_directory(SESSIONS / session, name)
+
+
+@app.post("/api/save_preset")
+def save_preset():
+    """Persist the UI's current band stacks as a named local preset."""
+    req = request.get_json()
+    name = "".join(ch for ch in req.get("name", "")
+                   if ch.isalnum() or ch in "-_").strip("-_")
+    if not name:
+        return jsonify({"error": "give the style a name"}), 400
+    c = req.get("config", {})
+    preset = {
+        "title": req.get("title") or name,
+        "description": req.get("description", "saved from the depthbrush UI"),
+        "config": {k: c[k] for k in ("band_feather", "reserve_halo_mm", "invert")
+                   if k in c},
+        "bands": req.get("bands", []),
+    }
+    LEARNED_DIR.mkdir(parents=True, exist_ok=True)
+    dest = LEARNED_DIR / f"{name}.json"
+    dest.write_text(json.dumps(preset, indent=2) + "\n")
+    return jsonify({"path": str(dest), "name": name})
 
 
 @app.post("/api/export")

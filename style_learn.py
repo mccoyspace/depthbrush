@@ -10,6 +10,11 @@ Examples:
       --name penck67 --title "learned: penck 1967 brush figures"
   python3 style_learn.py research_images/baselitz_images --name baselitz_learned
   python3 style_learn.py some_folder --report        # fingerprint only, no preset
+  python3 style_learn.py --rebuild presets/learned/penck67.json
+      # re-synthesize from the embedded fingerprint after editing the
+      # vocabulary/parameter mapping in depthbrush/fingerprint.py
+
+Learned presets are written to presets/learned/ (local, gitignored).
 """
 
 import argparse
@@ -19,18 +24,38 @@ from pathlib import Path
 from depthbrush.fingerprint import build_preset, fingerprint_folder, vocabulary_weights
 
 
+def rebuild(path: str):
+    p = Path(path)
+    d = json.loads(p.read_text())
+    if "fingerprint" not in d:
+        raise SystemExit(f"{path} has no embedded fingerprint")
+    fresh = build_preset(d["fingerprint"], d["title"])
+    p.write_text(json.dumps(fresh, indent=2) + "\n")
+    print(f"rebuilt {path} from its embedded fingerprint")
+    print(f"  {fresh['description']}")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("folder")
+    ap.add_argument("folder", nargs="?")
     ap.add_argument("--match", default="", help="only files whose name contains this")
     ap.add_argument("--limit", type=int, default=0, help="max images to analyze")
-    ap.add_argument("--name", default=None, help="preset slug (presets/<name>.json)")
+    ap.add_argument("--name", default=None, help="preset slug (<out>/<name>.json)")
     ap.add_argument("--title", default=None, help="display title for the preset")
-    ap.add_argument("--out", default="presets", help="output directory")
+    ap.add_argument("--out", default="presets/learned", help="output directory")
     ap.add_argument("--report", action="store_true", help="print fingerprint only")
     ap.add_argument("--quiet", action="store_true", help="skip per-image lines")
+    ap.add_argument("--rebuild", default=None, metavar="PRESET_JSON",
+                    help="re-synthesize an existing preset from its embedded "
+                         "fingerprint (after editing the mapping)")
     args = ap.parse_args()
+
+    if args.rebuild:
+        rebuild(args.rebuild)
+        return
+    if not args.folder:
+        ap.error("folder is required (or use --rebuild)")
 
     print(f"analyzing {args.folder}" + (f" (match: {args.match})" if args.match else ""))
     fp = fingerprint_folder(args.folder, limit=args.limit,

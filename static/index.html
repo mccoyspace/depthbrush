@@ -87,6 +87,10 @@ details.band .fields { padding: 4px 12px 10px; }
     <legend>preset</legend>
     <div class="row"><select id="preset" class="wide"></select></div>
     <div id="presetdesc"></div>
+    <div class="row" style="margin-top:8px">
+      <input type="text" id="presetSaveName" class="wide" placeholder="save current as&hellip;">
+      <button onclick="savePreset()">Save</button></div>
+    <div id="presetmsg" style="color:var(--accent2);font-size:11px"></div>
   </fieldset>
 
   <fieldset>
@@ -152,7 +156,7 @@ const FLOAT_STEPS = { darkness_gamma:0.05, min_darkness:0.01, bias_strength:0.05
   spiral_pitch_mm:0.1, spiral_min_mm:0.5,
   bias_angle_deg:5, angle_deg:5, feed:100 };
 
-async function loadPresetList() {
+async function refreshPresetList(keep) {
   const r = await fetch('/api/presets');
   state.presetList = await r.json();
   const sel = $('preset');
@@ -162,9 +166,28 @@ async function loadPresetList() {
     o.value = p.name; o.textContent = p.title || p.name; o.title = p.description;
     sel.appendChild(o);
   });
-  sel.value = 'classic';
-  sel.onchange = () => loadDefaults(sel.value);
+  if (keep) sel.value = keep;
+}
+
+async function loadPresetList() {
+  await refreshPresetList('classic');
+  $('preset').onchange = () => loadDefaults($('preset').value);
   await loadDefaults('classic');
+}
+
+async function savePreset() {
+  const name = $('presetSaveName').value.trim();
+  if (!name) { setStatus('give the style a name first', true); return; }
+  const cfg = { band_feather: parseFloat($('band_feather').value),
+                reserve_halo_mm: parseFloat($('reserve_halo_mm').value),
+                invert: $('invert').checked };
+  const r = await fetch('/api/save_preset', { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, config: cfg, bands: state.bands }) });
+  const d = await r.json();
+  if (d.error) { setStatus(d.error, true); return; }
+  $('presetmsg').textContent = 'saved → ' + d.path;
+  await refreshPresetList(d.name);  // new style appears, band edits untouched
 }
 
 async function pullBand(i, presetName) {

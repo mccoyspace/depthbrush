@@ -20,6 +20,9 @@ garden3.jpg
 # artist reference images (MoMA collection studies, not for distribution)
 research_images/
 
+# learned/personal presets stay local (artist-named study material)
+presets/learned/
+
 # macos / editors
 .DS_Store
 .idea/

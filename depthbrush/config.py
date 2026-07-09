@@ -11,6 +11,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 PRESET_DIR = Path(__file__).resolve().parent.parent / "presets"
+# learned/personal presets live here — gitignored, local to this machine
+LEARNED_DIR = PRESET_DIR / "learned"
 
 
 @dataclass
@@ -30,24 +32,32 @@ class BandStyle:
 
 
 def list_presets() -> list:
-    """[{name, title, description}, ...] for every presets/*.json."""
-    out = []
-    for f in sorted(PRESET_DIR.glob("*.json")):
-        try:
-            d = json.loads(f.read_text())
-            out.append({"name": f.stem, "title": d.get("title", f.stem),
-                        "description": d.get("description", "")})
-        except Exception:
+    """[{name, title, description, learned}] for shipped + local presets."""
+    out, seen = [], set()
+    for d_dir, learned in ((LEARNED_DIR, True), (PRESET_DIR, False)):
+        if not d_dir.exists():
             continue
-    return out
+        for f in sorted(d_dir.glob("*.json")):
+            if f.stem in seen:
+                continue
+            try:
+                d = json.loads(f.read_text())
+            except Exception:
+                continue
+            seen.add(f.stem)
+            out.append({"name": f.stem, "title": d.get("title", f.stem),
+                        "description": d.get("description", ""),
+                        "learned": learned})
+    return sorted(out, key=lambda p: (p["learned"], p["name"]))
 
 
 def load_preset(name: str) -> dict:
-    f = PRESET_DIR / f"{name}.json"
-    if not f.exists():
-        known = ", ".join(p["name"] for p in list_presets())
-        raise FileNotFoundError(f"no preset '{name}' (have: {known})")
-    return json.loads(f.read_text())
+    for d_dir in (LEARNED_DIR, PRESET_DIR):  # local presets shadow shipped
+        f = d_dir / f"{name}.json"
+        if f.exists():
+            return json.loads(f.read_text())
+    known = ", ".join(p["name"] for p in list_presets())
+    raise FileNotFoundError(f"no preset '{name}' (have: {known})")
 
 
 def _band_style(b: dict) -> "BandStyle":
