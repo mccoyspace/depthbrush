@@ -165,23 +165,10 @@ study material off the public repo). They appear in the UI dropdown and
 
 ### Improving a learned style
 
-Three levers, in order of impact:
-
-1. **Curate the references.** The fingerprint is only as coherent as its
-   input. Use `--match` (or dedicated subfolders) for one series/period;
-   `--report` prints the measurements without writing anything, and the skip
-   list shows which pages were rejected and why.
-2. **Tune by eye in the UI, then Save.** Load the learned preset, render,
-   adjust the dials taste disagrees with (spacing, budgets, wobble, passes),
-   and hit *Save* in the preset panel — the current band stacks are written
-   to `presets/learned/<name>.json` as a new named style. This is the main
-   loop: the extractor gets you a good starting point; your eye finishes it.
-3. **Edit the mapping itself.** The fingerprint→parameter rules live in
-   `vocabulary_weights()` and `build_preset()` in `depthbrush/fingerprint.py`.
-   When learned presets are consistently wrong in the same way (e.g. always
-   too dense), fix the rule, then re-synthesize instantly from the embedded
-   fingerprint: `python3 style_learn.py --rebuild presets/learned/<name>.json`
-   — no re-analysis of the images needed.
+The loop is **curate → learn → render → tune → save**, with occasional edits
+to the mapping rules when learned presets are wrong the same way every time.
+Full walkthrough with the fingerprint-metric cheat sheet:
+[IMPROVING_STYLES.md](IMPROVING_STYLES.md).
 
 ## Ideas not yet built
 

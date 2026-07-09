@@ -13,9 +13,8 @@ __pycache__/
 venv/
 *.egg-info/
 
-# extra test photos (keep only garden.jpg as the sample)
-garden2.jpg
-garden3.jpg
+# non-public input images (test photos, sources)
+in/
 
 # artist reference images (MoMA collection studies, not for distribution)
 research_images/
