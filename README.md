@@ -137,6 +137,29 @@ budgets. `max_strokes` is an economy constraint: lowering it forces the layer
 to abstract. Copy any `presets/*.json` to make a new named style; the UI edits
 all of it live (add/remove generators per band, every param exposed).
 
+## Learning styles from reference drawings (style_learn)
+
+`style_learn.py` distills a folder of reference drawings into a preset by
+measuring how the strokes *behave* — no image content is copied:
+
+```bash
+python3 style_learn.py path/to/drawings --match 1967 --name mystyle \
+    --title "learned: my style"
+python3 style_learn.py path/to/drawings --report      # fingerprint only
+```
+
+Pipeline: local-contrast ink extraction (polarity-aware, handles toned paper
+and white-line prints) → skeletonize → rebuild long strokes through junctions
+by tangent continuity → measure width, length distribution (length-weighted),
+curvature, angularity, winding (net rotation), direction anisotropy,
+parallelism, and mark discreteness → map to generator vocabulary weights
+(hatch / contour / scribble / glyphs / skeleton) → synthesize a 3-band preset
+(near band most faithful; mid/far are sparser, softer versions of the same
+hand). The measured fingerprint and vocabulary weights are embedded in the
+preset JSON for inspection. Learn from a *coherent* body of work — use
+`--match` to filter one period/series rather than a mixed folder. Learned
+presets appear in the UI dropdown automatically.
+
 ## Ideas not yet built
 
 - feed-rate modulation *within* strokes (brush speed = ink weight)
