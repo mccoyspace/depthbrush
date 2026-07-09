@@ -81,6 +81,8 @@ details.band .fields { padding: 4px 12px 10px; }
     <div class="row"><input type="text" id="imagePath" class="wide" placeholder="/path/to/photo.jpg">
       <button onclick="document.getElementById('file').click()">Browse</button>
       <input type="file" id="file" class="hidden" accept="image/*"></div>
+    <div class="row"><input type="text" id="toneFrom" class="wide"
+      placeholder="tone from&hellip; (optional restyle.py output)" title="alternate tone/structure source; depth still comes from the main image"></div>
   </fieldset>
 
   <fieldset>
@@ -352,6 +354,7 @@ async function render() {
    'reserve_halo_mm','defocus_strength'].forEach(k => cfg[k] = parseFloat($(k).value));
   cfg.invert = $('invert').checked;
   cfg.focus = $('focus_on').checked ? parseFloat($('focus').value) : null;
+  cfg.tone_source = $('toneFrom').value.trim() || null;
 
   $('renderBtn').disabled = true;
   setStatus('rendering&hellip;');

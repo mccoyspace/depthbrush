@@ -170,6 +170,32 @@ to the mapping rules when learned presets are wrong the same way every time.
 Full walkthrough with the fingerprint-metric cheat sheet:
 [IMPROVING_STYLES.md](IMPROVING_STYLES.md).
 
+## Generative restyle (restyle.py)
+
+Re-imagine the photo's surface with a diffusion model **conditioned on the
+real depth map**, then let the stroke generators draw the result. The
+generated raster is never plotted directly — it replaces the *tone/structure*
+source, while depth banding still comes from the original photo. Composition
+survives; surface transforms.
+
+```bash
+python3 restyle.py garden.jpg --prompt "expressionist brush and ink drawing, \
+    bold gestural strokes, monochrome"
+python3 main.py garden.jpg --tone-from out/garden_restyle/restyled.png --preset scribble
+```
+
+- `--band-prompts "far | mid | near"` generates a different hallucination per
+  depth layer, composited through the real feathered band masks.
+- `--strength` (0..1) is the photo-vs-dream dial; `--control` holds the
+  depth conditioning.
+- Backends: `diffusers` (local — SD1.5-class + ControlNet-Depth on Apple
+  Silicon MPS, ~3.5GB of weights on first run) and `comfy` (remote ComfyUI
+  server over its standard HTTP API: `--host/--port/--workflow`, where the
+  workflow is an API-format export with `__PROMPT__` / `__NEGATIVE__` /
+  `__SEED__` / `__INIT_IMAGE__` / `__DEPTH_IMAGE__` placeholders — intended
+  for an RTX 3060 / DGX Spark / Jetson box on the studio network).
+- In the UI, put the restyled path in the **tone from…** field.
+
 ## Ideas not yet built
 
 - feed-rate modulation *within* strokes (brush speed = ink weight)

@@ -109,6 +109,7 @@ def render():
         band_feather=float(c.get("band_feather", 0.06)),
         reserve_halo_mm=float(c.get("reserve_halo_mm", 2.0)),
         invert=bool(c.get("invert", False)),
+        tone_source=c.get("tone_source") or None,
         focus=None if c.get("focus") is None else float(c["focus"]),
         defocus_strength=float(c.get("defocus_strength", 1.0)),
         px_per_mm=float(c.get("px_per_mm", 1.0)),

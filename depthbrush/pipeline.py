@@ -54,7 +54,14 @@ def run(image_path: str, out_dir: str, cfg, seed: int = 7,
     print("estimating depth...")
     depth_full = estimate_depth(image_path, cfg.depth_model, cache_dir=cache_dir)
     depth = cv2.resize(depth_full, (work_w, work_h), interpolation=cv2.INTER_LINEAR)
-    gray = F.load_gray(image_path, work_w, work_h)
+    # tone/structure may come from an alternate source (genai restyle);
+    # depth banding always comes from the original photo
+    tone_path = cfg.tone_source or image_path
+    if cfg.tone_source:
+        if not Path(cfg.tone_source).exists():
+            raise FileNotFoundError(f"tone source not found: {cfg.tone_source}")
+        print(f"tone/structure from {cfg.tone_source}")
+    gray = F.load_gray(tone_path, work_w, work_h)
 
     theta_raw, coherence = F.orientation_field(gray, sigma_px=1.2 * ppm,
                                                tensor_sigma_px=2.5 * ppm)

@@ -40,6 +40,9 @@ def main():
                     help="reservation halo around nearer bands (mm)")
     ap.add_argument("--invert", action="store_true", default=None,
                     help="draw the lights (white ink on black paper)")
+    ap.add_argument("--tone-from", default=None, metavar="IMAGE",
+                    help="alternate tone/structure source (e.g. a restyle.py "
+                         "output); depth still comes from the main image")
     ap.add_argument("--focus", type=float, default=None,
                     help="focal plane depth 0..1 (0=far, 1=near)")
     ap.add_argument("--defocus", type=float, default=None, help="defocus strength")
@@ -63,7 +66,8 @@ def main():
         args.preset, n_bands=args.bands,
         paper_w=w, paper_h=h, margin=args.margin,
         band_feather=args.feather, reserve_halo_mm=args.halo,
-        invert=args.invert, focus=args.focus, defocus_strength=args.defocus,
+        invert=args.invert, tone_source=args.tone_from,
+        focus=args.focus, defocus_strength=args.defocus,
         px_per_mm=args.ppm, mark_scale=args.scale)
 
     slug = args.preset.replace(",", "+").replace(" ", "")

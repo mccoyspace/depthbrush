@@ -91,6 +91,10 @@ class Config:
     # invert: draw the LIGHTS (white ink on black paper — excavation)
     invert: bool = False
 
+    # optional alternate tone/structure source (e.g. a genai restyle of the
+    # photo); depth banding still comes from the original image
+    tone_source: str | None = None
+
     # focal plane (None = classic per-band blur; 0..1 = sharpest depth)
     focus: float | None = None
     defocus_strength: float = 1.0
