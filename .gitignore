@@ -27,3 +27,8 @@ presets/learned/
 .DS_Store
 .idea/
 .vscode/
+
+# root-level photos are private unless explicitly allowed
+/*.jpg
+/*.jpeg
+!/garden.jpg
