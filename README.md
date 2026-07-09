@@ -7,6 +7,26 @@ back-to-front: broad pale washes for distance, topographic form lines in the
 midground, dense descriptive hatching and one confident silhouette contour up
 front.
 
+Each band carries a **generator stack** — a list of mark-making algorithms —
+and named collections of bands + generators are **presets** (`presets/*.json`):
+
+| preset | idea |
+|---|---|
+| `classic` | pale far washes, mid hatching + iso-depth contours, dense near hatching |
+| `glyphic` | dark masses become blunt stick armatures; tone becomes an alphabet of signs |
+| `restated` | every contour attempted 3–5 times, angular, off-register — the line vibrates |
+| `scribble` | momentum random-walks attracted to darkness; loops, bursts, spiral fills |
+| `percussion` | brush-dab spatter fields and lash darts over a finely hatched near figure |
+| `economy` | a few slow sinuous contours and vast reserves of empty paper |
+| `excavation` | inverted: strokes seed on the *lights* — plot white ink on black paper |
+
+Generators (`depthbrush/generators.py`): `hatch` (evenly-spaced flow-field
+streamlines), `iso_depth` (level sets of the depth map), `contour` (band
+silhouette, restatable), `skeleton` (medial-axis armature of dark masses),
+`glyphs` (scattered sign alphabet), `scribble` (momentum walk), `stipple`
+(dabs + lashes). All emit polylines, so reservation, feathering, sorting, and
+G-code work identically for every vocabulary.
+
 ## Pipeline
 
 ```
@@ -55,10 +75,12 @@ defaults, discarding per-band edits.
 ### CLI
 
 ```bash
-python3 main.py garden.jpg                          # A3 landscape default
-python3 main.py photo.jpg --paper 700x500 --margin 40 --halo 3
+python3 main.py garden.jpg                          # classic preset, A3
+python3 main.py garden.jpg --preset glyphic
+python3 main.py garden.jpg --preset excavation      # white-on-black
+python3 main.py --list-presets
 python3 main.py photo.jpg --focus 0.85 --defocus 1.4 --seed 3
-python3 main.py photo.jpg --paper 1500x1000 --scale 3.6   # enlargement of the A3 look
+python3 main.py photo.jpg --paper 1500x1000 --scale 3.6 --preset scribble
 ```
 
 `--scale` multiplies all physical mark sizes; `--ppm` sets field resolution
@@ -101,12 +123,13 @@ The sender enables remote mode, paces a ~24-command window against
 
 ## Tuning the vocabulary
 
-All per-band character lives in `BandStyle` (`depthbrush/config.py`):
-spacing range (tone response), step/max length (stroke economy), wobble
-amp/wavelength (gesture), bias angle/strength (how much strokes obey image
-structure vs. a fixed hatch direction), cross-hatch, iso-depth line count,
-silhouette on/off, and stroke budgets. `max_strokes` is an economy constraint:
-lowering it forces the layer to abstract.
+Per-band physical character (tool, feed, tone blur/gamma) lives in the preset's
+band entries; mark character lives in each generator's params — spacing range
+(tone response), step/max length (stroke economy), wobble (gesture), bias
+angle/strength (image structure vs. fixed hatch direction), and stroke
+budgets. `max_strokes` is an economy constraint: lowering it forces the layer
+to abstract. Copy any `presets/*.json` to make a new named style; the UI edits
+all of it live (add/remove generators per band, every param exposed).
 
 ## Ideas not yet built
 

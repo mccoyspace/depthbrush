@@ -25,14 +25,15 @@ class PaperMap:
         return out
 
 
-def write_svg(path, layers, paper_w, paper_h, colors=None, widths=None):
+def write_svg(path, layers, paper_w, paper_h, colors=None, widths=None,
+              background="white"):
     """layers: list of (name, [polyline_mm, ...]). SVG y goes down, paper y up."""
     colors = colors or ["#000000"] * len(layers)
     widths = widths or [0.5] * len(layers)
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{paper_w}mm" height="{paper_h}mm" '
         f'viewBox="0 0 {paper_w} {paper_h}">',
-        f'<rect width="{paper_w}" height="{paper_h}" fill="white"/>',
+        f'<rect width="{paper_w}" height="{paper_h}" fill="{background}"/>',
     ]
     for (name, paths), color, wd in zip(layers, colors, widths):
         parts.append(f'<g id="{name}" fill="none" stroke="{color}" '
@@ -46,14 +47,20 @@ def write_svg(path, layers, paper_w, paper_h, colors=None, widths=None):
 
 
 def render_preview(path, layers, paper_w, paper_h, px_per_mm=4.0,
-                   colors=None, widths_mm=None):
-    """Multiply-blended raster preview simulating tool width and ink value."""
+                   colors=None, widths_mm=None, invert=False):
+    """Raster preview simulating tool width and ink value.
+
+    Normal: multiply-blend dark strokes on white paper.
+    Invert: screen-blend light strokes on black ground (excavation mode).
+    """
     W, H = int(paper_w * px_per_mm), int(paper_h * px_per_mm)
-    canvas = np.ones((H, W, 3), dtype=np.float32)
+    bg = 0.06 if invert else 1.0
+    canvas = np.full((H, W, 3), bg, dtype=np.float32)
     colors = colors or [(0, 0, 0)] * len(layers)
     widths_mm = widths_mm or [0.5] * len(layers)
     for (name, paths), color, wd in zip(layers, colors, widths_mm):
-        layer = np.ones((H, W, 3), dtype=np.float32)
+        layer = np.zeros((H, W, 3), dtype=np.float32) if invert \
+            else np.ones((H, W, 3), dtype=np.float32)
         col = tuple(c / 255.0 for c in color)
         thickness = max(1, int(round(wd * px_per_mm)))
         for p in paths:
@@ -62,7 +69,10 @@ def render_preview(path, layers, paper_w, paper_h, px_per_mm=4.0,
             pix[:, 1] = (paper_h - p[:, 1]) * px_per_mm
             cv2.polylines(layer, [pix.astype(np.int32)], False, col,
                           thickness, lineType=cv2.LINE_AA)
-        canvas *= layer
+        if invert:
+            canvas = 1 - (1 - canvas) * (1 - layer)  # screen
+        else:
+            canvas *= layer                           # multiply
     cv2.imwrite(str(path), (canvas[:, :, ::-1] * 255).astype(np.uint8))
 
 

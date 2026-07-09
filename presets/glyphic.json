@@ -1,0 +1,41 @@
+{
+  "description": "Pictographic sign-language: dark masses become blunt stick armatures, tone becomes a scattered alphabet of marks. Uniform wide brush throughout (after Penck).",
+  "config": {"band_feather": 0.05, "reserve_halo_mm": 3.0, "invert": false},
+  "bands": [
+    {
+      "name": "far", "tool": "brush", "feed": 1400,
+      "blur_mm": 8.0, "darkness_gamma": 1.7, "min_darkness": 0.16,
+      "generators": [
+        {"type": "glyphs", "glyph_set": ["dot", "dash"], "size_mm": 3.5,
+         "spacing_min_mm": 5.0, "spacing_max_mm": 14.0, "align": "fixed",
+         "angle_deg": 65.0, "max_glyphs": 700, "seed_attempts": 10000}
+      ]
+    },
+    {
+      "name": "mid", "tool": "brush", "feed": 1400,
+      "blur_mm": 3.0, "darkness_gamma": 1.4, "min_darkness": 0.12,
+      "generators": [
+        {"type": "skeleton", "tone_threshold": 0.5, "close_mm": 2.0,
+         "prune_mm": 7.0, "step_mm": 1.0, "wobble_amp_mm": 0.4,
+         "wobble_wavelength_mm": 30.0},
+        {"type": "glyphs", "glyph_set": ["dash", "v", "zig"], "size_mm": 5.5,
+         "spacing_min_mm": 7.0, "spacing_max_mm": 18.0, "align": "flow",
+         "max_glyphs": 450, "seed_attempts": 9000}
+      ]
+    },
+    {
+      "name": "near", "tool": "brush", "feed": 1600,
+      "blur_mm": 1.2, "darkness_gamma": 1.2, "min_darkness": 0.10,
+      "generators": [
+        {"type": "skeleton", "tone_threshold": 0.4, "close_mm": 2.5,
+         "prune_mm": 5.0, "step_mm": 0.9, "wobble_amp_mm": 0.35,
+         "wobble_wavelength_mm": 24.0},
+        {"type": "glyphs", "glyph_set": ["x", "plus", "star", "o"],
+         "size_mm": 8.0, "spacing_min_mm": 9.0, "spacing_max_mm": 22.0,
+         "align": "random", "max_glyphs": 300, "seed_attempts": 8000},
+        {"type": "contour", "passes": 1, "angular": true, "offset_mm": 1.2,
+         "min_len_mm": 25.0, "step_mm": 1.2, "smooth_mm": 1.6}
+      ]
+    }
+  ]
+}

@@ -16,7 +16,8 @@ from pathlib import Path
 
 from flask import Flask, jsonify, request, send_file, send_from_directory
 
-from depthbrush.config import BandStyle, Config
+from depthbrush.config import BandStyle, Config, list_presets, load_preset
+from depthbrush.generators import DEFAULT_PARAMS
 from depthbrush.pipeline import run
 
 ROOT = Path(__file__).resolve().parent
@@ -29,15 +30,8 @@ app = Flask(__name__)
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp", ".webp"}
 
-# BandStyle fields exposed in the UI, in display order
-STYLE_FIELDS = [
-    "tool", "feed", "blur_mm", "darkness_gamma", "min_darkness",
-    "spacing_min_mm", "spacing_max_mm", "step_mm", "max_len_mm", "min_len_mm",
-    "max_strokes", "seed_attempts", "bias_angle_deg", "bias_strength",
-    "wobble_amp_mm", "wobble_wavelength_mm",
-    "cross_hatch", "cross_hatch_angle_deg", "cross_hatch_threshold",
-    "iso_depth_lines", "silhouette",
-]
+# band-level physical fields exposed in the UI, in display order
+BAND_FIELDS = ["tool", "feed", "blur_mm", "darkness_gamma", "min_darkness"]
 
 
 def session_dir(image_path: str) -> Path:
@@ -50,17 +44,26 @@ def index():
     return send_file(ROOT / "static" / "index.html")
 
 
+@app.get("/api/presets")
+def presets():
+    return jsonify(list_presets())
+
+
 @app.get("/api/defaults")
 def defaults():
-    n = int(request.args.get("bands", 3))
-    cfg = Config(n_bands=n)
+    name = request.args.get("preset", "classic")
+    preset = load_preset(name)
+    cfg = Config.from_preset(name)
     return jsonify({
+        "preset": name,
+        "description": preset.get("description", ""),
         "config": {k: getattr(cfg, k) for k in
-                   ("paper_w", "paper_h", "margin", "n_bands", "band_feather",
-                    "reserve_halo_mm", "focus", "defocus_strength",
+                   ("paper_w", "paper_h", "margin", "band_feather",
+                    "reserve_halo_mm", "invert", "focus", "defocus_strength",
                     "px_per_mm", "mark_scale")},
-        "styles": [dataclasses.asdict(s) for s in cfg.styles],
-        "style_fields": STYLE_FIELDS,
+        "bands": [dataclasses.asdict(s) for s in cfg.styles],
+        "band_fields": BAND_FIELDS,
+        "gen_defaults": DEFAULT_PARAMS,
     })
 
 
@@ -89,28 +92,26 @@ def render():
         return jsonify({"error": f"image not found: {image_path}"}), 400
 
     c = req.get("config", {})
-    styles = None
-    if req.get("styles"):
-        styles = []
-        for s in req["styles"]:
-            st = BandStyle()
-            for k, v in s.items():
-                if hasattr(st, k):
-                    setattr(st, k, type(getattr(st, k))(v) if v is not None else v)
-            styles.append(st)
+    styles = []
+    band_field_types = {"name": str, "tool": str, "feed": float, "blur_mm": float,
+                        "darkness_gamma": float, "min_darkness": float}
+    for b in req.get("bands", []):
+        kwargs = {k: t(b[k]) for k, t in band_field_types.items() if k in b}
+        kwargs["generators"] = b.get("generators", [])
+        styles.append(BandStyle(**kwargs))
 
     cfg = Config(
         paper_w=float(c.get("paper_w", 420)),
         paper_h=float(c.get("paper_h", 297)),
         margin=float(c.get("margin", 25)),
-        n_bands=int(c.get("n_bands", 3)),
         band_feather=float(c.get("band_feather", 0.06)),
         reserve_halo_mm=float(c.get("reserve_halo_mm", 2.0)),
+        invert=bool(c.get("invert", False)),
         focus=None if c.get("focus") is None else float(c["focus"]),
         defocus_strength=float(c.get("defocus_strength", 1.0)),
         px_per_mm=float(c.get("px_per_mm", 1.0)),
         mark_scale=float(c.get("mark_scale", 1.0)),
-        styles=styles or [],
+        styles=styles,
     )
 
     sd = session_dir(image_path)

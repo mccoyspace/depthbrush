@@ -1,0 +1,51 @@
+{
+  "description": "Vibrating restated contours: every edge attempted 3-5 times, angular and off-register, over steep nervous hatching (after Baselitz's etchings).",
+  "config": {"band_feather": 0.05, "reserve_halo_mm": 1.5, "invert": false},
+  "bands": [
+    {
+      "name": "far", "tool": "pen", "feed": 2200,
+      "blur_mm": 5.0, "darkness_gamma": 1.6, "min_darkness": 0.16,
+      "generators": [
+        {"type": "hatch", "spacing_min_mm": 2.4, "spacing_max_mm": 7.0,
+         "step_mm": 1.4, "max_len_mm": 90.0, "min_len_mm": 14.0,
+         "bias_angle_deg": 75.0, "bias_strength": 0.6,
+         "wobble_amp_mm": 0.3, "wobble_wavelength_mm": 14.0,
+         "max_strokes": 500, "seed_attempts": 8000}
+      ]
+    },
+    {
+      "name": "mid", "tool": "pen", "feed": 2200,
+      "blur_mm": 1.8, "darkness_gamma": 1.3, "min_darkness": 0.11,
+      "generators": [
+        {"type": "contour", "passes": 2, "offset_mm": 1.0, "trim": 0.45,
+         "angular": true, "min_len_mm": 14.0, "step_mm": 1.0,
+         "smooth_mm": 1.2, "offset_wavelength_mm": 45.0},
+        {"type": "hatch", "spacing_min_mm": 1.4, "spacing_max_mm": 4.5,
+         "step_mm": 1.1, "max_len_mm": 35.0, "min_len_mm": 6.0,
+         "bias_angle_deg": 60.0, "bias_strength": 0.4,
+         "wobble_amp_mm": 0.2, "wobble_wavelength_mm": 9.0,
+         "max_strokes": 1400, "seed_attempts": 12000}
+      ]
+    },
+    {
+      "name": "near", "tool": "pen", "feed": 2600,
+      "blur_mm": 0.6, "darkness_gamma": 1.1, "min_darkness": 0.08,
+      "generators": [
+        {"type": "contour", "passes": 4, "offset_mm": 1.4, "trim": 0.4,
+         "angular": true, "min_len_mm": 10.0, "step_mm": 0.8,
+         "smooth_mm": 1.0, "offset_wavelength_mm": 35.0},
+        {"type": "hatch", "spacing_min_mm": 0.9, "spacing_max_mm": 3.2,
+         "step_mm": 0.9, "max_len_mm": 22.0, "min_len_mm": 3.0,
+         "bias_angle_deg": -70.0, "bias_strength": 0.45,
+         "wobble_amp_mm": 0.15, "wobble_wavelength_mm": 6.0,
+         "max_strokes": 4500, "seed_attempts": 20000},
+        {"type": "hatch", "darkness_threshold": 0.6,
+         "spacing_min_mm": 1.0, "spacing_max_mm": 3.0,
+         "step_mm": 0.9, "max_len_mm": 20.0, "min_len_mm": 3.0,
+         "bias_angle_deg": 25.0, "bias_strength": 0.5,
+         "wobble_amp_mm": 0.15, "wobble_wavelength_mm": 6.0,
+         "max_strokes": 2200, "seed_attempts": 10000}
+      ]
+    }
+  ]
+}

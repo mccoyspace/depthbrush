@@ -17,6 +17,9 @@ venv/
 garden2.jpg
 garden3.jpg
 
+# artist reference images (MoMA collection studies, not for distribution)
+research_images/
+
 # macos / editors
 .DS_Store
 .idea/

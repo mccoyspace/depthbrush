@@ -6,14 +6,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root {
-  --bg: #16171a; --panel: #1f2126; --panel2: #26292f; --line: #33363d;
-  --text: #d6d8dd; --dim: #8b8f98; --accent: #7fa8d9; --accent2: #d9a87f;
-  --err: #d97f7f;
+  --bg: #16171a; --panel: #1f2126; --panel2: #26292f; --panel3: #2e323a;
+  --line: #33363d; --text: #d6d8dd; --dim: #8b8f98; --accent: #7fa8d9;
+  --accent2: #d9a87f; --err: #d97f7f;
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text);
   font: 13px/1.45 -apple-system, "Helvetica Neue", sans-serif; display: flex; height: 100vh; }
-#sidebar { width: 360px; min-width: 360px; background: var(--panel);
+#sidebar { width: 370px; min-width: 370px; background: var(--panel);
   border-right: 1px solid var(--line); overflow-y: auto; padding: 14px; }
 #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 h1 { font-size: 15px; margin: 0 0 2px; letter-spacing: .12em; font-weight: 600; }
@@ -22,23 +22,30 @@ h1 span { color: var(--accent); }
 fieldset { border: 1px solid var(--line); border-radius: 6px; margin: 0 0 12px; padding: 10px 12px; }
 legend { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; padding: 0 5px; }
 .row { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
-.row label { flex: 1; color: var(--dim); }
+.row label { flex: 1; color: var(--dim); overflow: hidden; text-overflow: ellipsis; }
 .row input[type=number], .row input[type=text], .row select {
   width: 92px; background: var(--panel2); color: var(--text); border: 1px solid var(--line);
   border-radius: 4px; padding: 4px 6px; font: inherit; }
-.row input[type=text].wide { width: 100%; flex: 2.2; }
+.row input[type=text].wide, .row select.wide { width: 100%; flex: 2.2; }
 .row input[type=range] { flex: 1.4; accent-color: var(--accent); }
 .row input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; }
+#presetdesc { color: var(--dim); font-size: 11px; margin-top: 6px; line-height: 1.4; }
 button { background: var(--panel2); color: var(--text); border: 1px solid var(--line);
   border-radius: 5px; padding: 6px 12px; font: inherit; cursor: pointer; }
 button:hover { border-color: var(--accent); }
 button.primary { background: var(--accent); color: #16171a; font-weight: 600; border: none;
   width: 100%; padding: 10px; font-size: 14px; }
 button.primary:disabled { opacity: .45; cursor: wait; }
+button.tiny { padding: 1px 7px; font-size: 12px; color: var(--dim); }
+button.tiny:hover { color: var(--err); border-color: var(--err); }
 details.band { border: 1px solid var(--line); border-radius: 6px; margin-bottom: 8px; background: var(--panel2); }
 details.band summary { cursor: pointer; padding: 8px 12px; font-weight: 600; }
 details.band summary small { color: var(--dim); font-weight: 400; margin-left: 6px; }
 details.band .fields { padding: 4px 12px 10px; }
+.gen { border: 1px solid var(--line); border-radius: 5px; background: var(--panel3);
+  margin: 8px 0; padding: 6px 10px 8px; }
+.gen .genhead { display: flex; align-items: center; justify-content: space-between;
+  font-weight: 600; color: var(--accent2); margin-bottom: 2px; }
 #tabs { display: flex; gap: 2px; padding: 10px 14px 0; border-bottom: 1px solid var(--line); }
 #tabs button { border-radius: 6px 6px 0 0; border-bottom: none; color: var(--dim); }
 #tabs button.active { color: var(--text); background: var(--panel); border-color: var(--accent); }
@@ -46,8 +53,10 @@ details.band .fields { padding: 4px 12px 10px; }
   align-items: flex-start; justify-content: center; background: #101114; }
 #view img.solo { max-width: 100%; box-shadow: 0 4px 30px rgba(0,0,0,.5); }
 #stack { position: relative; background: white; box-shadow: 0 4px 30px rgba(0,0,0,.5); }
+#stack.inv { background: #111; }
 #stack img { display: block; max-width: 100%; }
 #stack img.over { position: absolute; inset: 0; mix-blend-mode: multiply; }
+#stack.inv img.over { mix-blend-mode: screen; }
 #statusbar { padding: 8px 14px; border-top: 1px solid var(--line); background: var(--panel);
   display: flex; gap: 18px; align-items: center; font-size: 12px; min-height: 38px; flex-wrap: wrap; }
 #statusbar .err { color: var(--err); }
@@ -58,6 +67,8 @@ details.band .fields { padding: 4px 12px 10px; }
 .hidden { display: none !important; }
 #exportmsg { color: var(--accent2); }
 .dice { padding: 4px 8px; }
+.addgen { display: flex; gap: 6px; margin-top: 6px; }
+.addgen select { flex: 1; }
 </style>
 </head>
 <body>
@@ -73,6 +84,12 @@ details.band .fields { padding: 4px 12px 10px; }
   </fieldset>
 
   <fieldset>
+    <legend>preset</legend>
+    <div class="row"><select id="preset" class="wide"></select></div>
+    <div id="presetdesc"></div>
+  </fieldset>
+
+  <fieldset>
     <legend>paper &amp; scale</legend>
     <div class="row"><label>paper w &times; h (mm)</label>
       <input type="number" id="paper_w" value="420" step="10">
@@ -84,9 +101,9 @@ details.band .fields { padding: 4px 12px 10px; }
 
   <fieldset>
     <legend>depth layering</legend>
-    <div class="row"><label>bands</label><input type="number" id="n_bands" value="3" min="2" max="5" step="1"></div>
     <div class="row"><label>feather</label><input type="number" id="band_feather" value="0.06" step="0.01"></div>
     <div class="row"><label>reserve halo (mm)</label><input type="number" id="reserve_halo_mm" value="2" step="0.5"></div>
+    <div class="row"><label>invert (light on black)</label><input type="checkbox" id="invert"></div>
     <div class="row"><label>focal plane</label><input type="checkbox" id="focus_on">
       <input type="range" id="focus" min="0" max="1" step="0.01" value="0.8" disabled>
       <span id="focusval" style="width:30px;color:var(--dim)">0.80</span></div>
@@ -116,69 +133,153 @@ details.band .fields { padding: 4px 12px 10px; }
     <button data-tab="source" onclick="setTab('source')">Source</button>
   </div>
   <div id="layertoggles" class="hidden"></div>
-  <div id="view"><div style="color:var(--dim);margin-top:80px">Pick an image and hit Render.</div></div>
+  <div id="view"><div style="color:var(--dim);margin-top:80px">Pick an image, choose a preset, hit Render.</div></div>
   <div id="statusbar"><span id="status">idle</span><span id="stats"></span></div>
 </div>
 
 <script>
-let state = { session: null, files: null, layerSvgs: [], styleFields: [], styles: [], tab: 'preview' };
+let state = { session: null, files: null, layerSvgs: [], bands: [], bandFields: [],
+              genDefaults: {}, invert: false, tab: 'preview' };
 
 const $ = id => document.getElementById(id);
 const FLOAT_STEPS = { darkness_gamma:0.05, min_darkness:0.01, bias_strength:0.05,
-  cross_hatch_threshold:0.02, wobble_amp_mm:0.05, step_mm:0.1, spacing_min_mm:0.1,
-  spacing_max_mm:0.1, blur_mm:0.5, min_len_mm:0.5, max_len_mm:5, wobble_wavelength_mm:1,
-  bias_angle_deg:5, cross_hatch_angle_deg:5, feed:100 };
+  darkness_threshold:0.02, trim:0.05, agitation:0.05, darkness_pull:0.05,
+  spiral_threshold:0.02, lash_threshold:0.02, tone_threshold:0.02,
+  wobble_amp_mm:0.05, step_mm:0.1, spacing_min_mm:0.1, spacing_max_mm:0.1,
+  blur_mm:0.5, min_len_mm:0.5, max_len_mm:5, wobble_wavelength_mm:1,
+  offset_mm:0.1, offset_wavelength_mm:5, smooth_mm:0.2, close_mm:0.5,
+  prune_mm:0.5, size_mm:0.5, dab_mm:0.1, lash_min_mm:0.5, lash_max_mm:0.5,
+  spiral_pitch_mm:0.1, spiral_min_mm:0.5,
+  bias_angle_deg:5, angle_deg:5, feed:100 };
 
-async function loadDefaults(nBands) {
-  const r = await fetch('/api/defaults?bands=' + nBands);
+async function loadPresetList() {
+  const r = await fetch('/api/presets');
+  const list = await r.json();
+  const sel = $('preset');
+  sel.innerHTML = '';
+  list.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p.name; o.textContent = p.name; o.title = p.description;
+    sel.appendChild(o);
+  });
+  sel.value = 'classic';
+  sel.onchange = () => loadDefaults(sel.value);
+  await loadDefaults('classic');
+}
+
+async function loadDefaults(preset) {
+  const r = await fetch('/api/defaults?preset=' + encodeURIComponent(preset));
   const d = await r.json();
-  state.styleFields = d.style_fields;
-  state.styles = d.styles;
+  state.bands = d.bands;
+  state.bandFields = d.band_fields;
+  state.genDefaults = d.gen_defaults;
+  $('preset').value = d.preset;
+  $('presetdesc').textContent = d.description;
+  const c = d.config;
+  $('band_feather').value = c.band_feather;
+  $('reserve_halo_mm').value = c.reserve_halo_mm;
+  $('invert').checked = !!c.invert;
   buildBandPanels();
+}
+
+function inputFor(obj, key, val, onchange) {
+  let inp;
+  if (typeof val === 'boolean') {
+    inp = document.createElement('input'); inp.type = 'checkbox'; inp.checked = val;
+    inp.onchange = () => { obj[key] = inp.checked; if (onchange) onchange(); };
+  } else if (key === 'tool') {
+    inp = document.createElement('select');
+    ['brush', 'pen'].forEach(t => { const o = document.createElement('option');
+      o.value = o.textContent = t; inp.appendChild(o); });
+    inp.value = val;
+    inp.onchange = () => { obj[key] = inp.value; if (onchange) onchange(); };
+  } else if (Array.isArray(val)) {
+    inp = document.createElement('input'); inp.type = 'text'; inp.value = val.join(',');
+    inp.onchange = () => { obj[key] = inp.value.split(',').map(s => s.trim()).filter(Boolean); };
+  } else if (typeof val === 'string') {
+    inp = document.createElement('input'); inp.type = 'text'; inp.value = val;
+    inp.onchange = () => { obj[key] = inp.value; };
+  } else {
+    inp = document.createElement('input'); inp.type = 'number'; inp.value = val;
+    inp.step = Number.isInteger(val) && !(key in FLOAT_STEPS) ? 1 : (FLOAT_STEPS[key] || 0.1);
+    inp.onchange = () => { obj[key] = parseFloat(inp.value); };
+  }
+  return inp;
+}
+
+function paramRow(obj, key, val, onchange) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  const lab = document.createElement('label');
+  lab.textContent = key.replaceAll('_', ' ');
+  row.appendChild(lab);
+  row.appendChild(inputFor(obj, key, val, onchange));
+  return row;
 }
 
 function buildBandPanels() {
   const holder = $('bands');
   holder.innerHTML = '';
-  state.styles.forEach((s, i) => {
+  state.bands.forEach((b, i) => {
     const det = document.createElement('details');
     det.className = 'band';
-    if (i === state.styles.length - 1) det.open = false;
     const sum = document.createElement('summary');
-    sum.innerHTML = `band ${i} &mdash; ${s.name} <small>${s.tool}</small>`;
+    sum.innerHTML = `band ${i} &mdash; ${b.name} <small>${b.tool} &middot; ${
+      (b.generators || []).map(g => g.type).join(' + ') || 'empty'}</small>`;
     det.appendChild(sum);
     const box = document.createElement('div');
     box.className = 'fields';
-    state.styleFields.forEach(f => {
-      const v = s[f];
-      const row = document.createElement('div');
-      row.className = 'row';
-      const lab = document.createElement('label');
-      lab.textContent = f.replaceAll('_', ' ');
-      row.appendChild(lab);
-      let inp;
-      if (typeof v === 'boolean') {
-        inp = document.createElement('input'); inp.type = 'checkbox'; inp.checked = v;
-        inp.onchange = () => { state.styles[i][f] = inp.checked; };
-      } else if (f === 'tool') {
-        inp = document.createElement('select');
-        ['brush', 'pen'].forEach(t => { const o = document.createElement('option'); o.value = o.textContent = t; inp.appendChild(o); });
-        inp.value = v;
-        inp.onchange = () => { state.styles[i][f] = inp.value; };
-      } else {
-        inp = document.createElement('input'); inp.type = 'number'; inp.value = v;
-        inp.step = Number.isInteger(v) && !(f in FLOAT_STEPS) ? 1 : (FLOAT_STEPS[f] || 0.1);
-        inp.onchange = () => { state.styles[i][f] = parseFloat(inp.value); };
-      }
-      row.appendChild(inp);
-      box.appendChild(row);
+    state.bandFields.forEach(f => {
+      if (f in b) box.appendChild(paramRow(b, f, b[f], buildSummaries));
     });
+    (b.generators || []).forEach((g, gi) => {
+      const gbox = document.createElement('div');
+      gbox.className = 'gen';
+      const head = document.createElement('div');
+      head.className = 'genhead';
+      head.innerHTML = `<span>${g.type}</span>`;
+      const rm = document.createElement('button');
+      rm.className = 'tiny'; rm.textContent = '✕'; rm.title = 'remove generator';
+      rm.onclick = () => { b.generators.splice(gi, 1); buildBandPanels(); det.open = true; };
+      head.appendChild(rm);
+      gbox.appendChild(head);
+      Object.keys(g).forEach(k => {
+        if (k !== 'type') gbox.appendChild(paramRow(g, k, g[k]));
+      });
+      box.appendChild(gbox);
+    });
+    const add = document.createElement('div');
+    add.className = 'addgen';
+    const sel = document.createElement('select');
+    Object.keys(state.genDefaults).forEach(t => {
+      const o = document.createElement('option'); o.value = o.textContent = t;
+      sel.appendChild(o);
+    });
+    const btn = document.createElement('button');
+    btn.textContent = '+ generator';
+    btn.onclick = () => {
+      b.generators = b.generators || [];
+      b.generators.push({ type: sel.value,
+        ...JSON.parse(JSON.stringify(state.genDefaults[sel.value])) });
+      buildBandPanels();
+      holder.querySelectorAll('details')[i].open = true;
+    };
+    add.appendChild(sel); add.appendChild(btn);
+    box.appendChild(add);
     det.appendChild(box);
     holder.appendChild(det);
   });
 }
 
-$('n_bands').onchange = () => loadDefaults(parseInt($('n_bands').value));
+function buildSummaries() {
+  document.querySelectorAll('#bands details.band').forEach((det, i) => {
+    const b = state.bands[i];
+    det.querySelector('summary').innerHTML =
+      `band ${i} &mdash; ${b.name} <small>${b.tool} &middot; ${
+        (b.generators || []).map(g => g.type).join(' + ') || 'empty'}</small>`;
+  });
+}
+
 $('focus_on').onchange = () => { $('focus').disabled = !$('focus_on').checked; };
 $('focus').oninput = () => { $('focusval').textContent = parseFloat($('focus').value).toFixed(2); };
 $('file').onchange = async () => {
@@ -196,20 +297,22 @@ async function render() {
   const image = $('imagePath').value.trim();
   if (!image) { setStatus('choose an image first', true); return; }
   const cfg = {};
-  ['paper_w','paper_h','margin','mark_scale','px_per_mm','n_bands','band_feather',
+  ['paper_w','paper_h','margin','mark_scale','px_per_mm','band_feather',
    'reserve_halo_mm','defocus_strength'].forEach(k => cfg[k] = parseFloat($(k).value));
+  cfg.invert = $('invert').checked;
   cfg.focus = $('focus_on').checked ? parseFloat($('focus').value) : null;
 
   $('renderBtn').disabled = true;
   setStatus('rendering&hellip;');
-  const t0 = performance.now();
   try {
     const r = await fetch('/api/render', { method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image, config: cfg, styles: state.styles, seed: parseInt($('seed').value) }) });
+      body: JSON.stringify({ image, config: cfg, bands: state.bands,
+                             seed: parseInt($('seed').value) }) });
     const d = await r.json();
     if (d.error) { setStatus(d.error, true); return; }
     state.session = d.session; state.files = d.files; state.layerSvgs = d.layer_svgs;
+    state.invert = !!(d.manifest && d.manifest.invert);
     const total = d.manifest.layers.reduce((a, l) => a + l.est_min, 0);
     const draw = d.manifest.layers.reduce((a, l) => a + l.draw_mm, 0);
     $('stats').innerHTML = d.manifest.layers.map(l =>
@@ -250,7 +353,7 @@ function setTab(tab) {
   }
   const base = `/files/${state.session}/`;
   if (tab === 'layers') {
-    let html = '<div id="stack">';
+    let html = `<div id="stack" class="${state.invert ? 'inv' : ''}">`;
     state.layerSvgs.forEach((f, i) => {
       html += `<img id="layer_img_${i}" class="${i ? 'over' : ''}" src="${base}${f}">`;
     });
@@ -274,7 +377,7 @@ async function doExport() {
   $('exportmsg').textContent = 'saved → ' + d.path;
 }
 
-loadDefaults(3);
+loadPresetList();
 </script>
 </body>
 </html>

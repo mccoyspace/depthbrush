@@ -1,7 +1,6 @@
-"""Orchestration: photo -> depth -> banded stroke layers -> SVG/G-code."""
+"""Orchestration: photo -> depth -> banded generator stacks -> SVG/G-code."""
 
 import json
-import math
 from pathlib import Path
 
 import cv2
@@ -10,14 +9,25 @@ import numpy as np
 from . import bands as B
 from . import fields as F
 from .depth import estimate_depth
-from .geometry import clip_by_mask, polyline_length, sort_paths
+from .generators import GenContext, dispatch
+from .geometry import polyline_length, sort_paths
 from .output import PaperMap, render_preview, write_gcode, write_svg
-from .strokes import flow_hatch, iso_depth_contours, silhouette_lines
 
+# ink-on-paper preview: far -> near (BGR-ish tuples are RGB here)
 PREVIEW_COLORS = [(150, 160, 175), (90, 100, 125), (20, 20, 25),
                   (60, 60, 60), (100, 100, 100)]
-PREVIEW_WIDTHS = [2.6, 1.3, 0.45, 0.7, 1.0]
+# light-on-black (invert / excavation) preview ramp
+PREVIEW_COLORS_INV = [(105, 100, 90), (170, 165, 155), (250, 248, 240),
+                      (200, 200, 200), (150, 150, 150)]
 SVG_COLORS = ["#93a1b1", "#5a6480", "#141419", "#3c3c3c", "#646464"]
+SVG_COLORS_INV = ["#69645a", "#aaa59b", "#faf8f0", "#c8c8c8", "#969696"]
+
+
+def preview_widths(styles) -> list:
+    """Simulated tool width per layer: brush passes taper with depth, pen stays fine."""
+    n = max(len(styles) - 1, 1)
+    return [2.6 - 1.2 * (i / n) if s.tool == "brush" else 0.45
+            for i, s in enumerate(styles)]
 
 
 def run(image_path: str, out_dir: str, cfg, seed: int = 7,
@@ -37,7 +47,8 @@ def run(image_path: str, out_dir: str, cfg, seed: int = 7,
     work_w, work_h = int(iw * s), int(ih * s)
     ppm = cfg.px_per_mm
     print(f"working canvas {work_w}x{work_h}px "
-          f"({work_w / ppm:.0f}x{work_h / ppm:.0f}mm drawn area)")
+          f"({work_w / ppm:.0f}x{work_h / ppm:.0f}mm drawn area)"
+          + (" [INVERT: drawing the lights]" if cfg.invert else ""))
 
     # --- fields ---
     print("estimating depth...")
@@ -48,9 +59,10 @@ def run(image_path: str, out_dir: str, cfg, seed: int = 7,
     theta_raw, coherence = F.orientation_field(gray, sigma_px=1.2 * ppm,
                                                tensor_sigma_px=2.5 * ppm)
 
-    thresholds = B.band_thresholds(depth, cfg.n_bands)
+    n_bands = cfg.n_bands
+    thresholds = B.band_thresholds(depth, n_bands)
     idx_map = B.band_index_map(depth, thresholds)
-    masks = B.band_masks(idx_map, cfg.n_bands)
+    masks = B.band_masks(idx_map, n_bands)
     halo_px = cfg.reserve_halo_mm * ppm
 
     # contour strokes must not trace the image frame
@@ -61,12 +73,12 @@ def run(image_path: str, out_dir: str, cfg, seed: int = 7,
 
     cv2.imwrite(str(out / "depth.png"), (depth * 255).astype(np.uint8))
     cv2.imwrite(str(out / "bands.png"),
-                (idx_map.astype(np.float32) / max(cfg.n_bands - 1, 1) * 255).astype(np.uint8))
+                (idx_map.astype(np.float32) / max(n_bands - 1, 1) * 255).astype(np.uint8))
 
     paper = PaperMap(work_w, work_h, cfg)
     layers_mm = []       # (name, [paths]) far -> near, for preview
     manifest = {"image": image_path, "paper": [cfg.paper_w, cfg.paper_h],
-                "thresholds": thresholds, "layers": []}
+                "invert": cfg.invert, "thresholds": thresholds, "layers": []}
 
     for i, style in enumerate(cfg.styles):
         print(f"[band {i} · {style.name} · {style.tool}]")
@@ -80,82 +92,33 @@ def run(image_path: str, out_dir: str, cfg, seed: int = 7,
                                   max_sigma_px=8.0 * ppm)
         else:
             tone = F.blur_levels(gray, [style.blur_mm * ppm])[0]
-        darkness = np.clip(1.0 - tone, 0, 1) ** style.darkness_gamma
-        # feather: soft band membership thins seeding near boundaries
+        # ink demand: darks normally; LIGHTS in invert/excavation mode
+        raw = tone if cfg.invert else (1.0 - tone)
+        darkness = np.clip(raw, 0, 1) ** style.darkness_gamma
         darkness_seed = darkness * weight
 
-        theta = F.blend_orientation(theta_raw, coherence,
-                                    math.radians(style.bias_angle_deg),
-                                    style.bias_strength)
+        ctx = GenContext(
+            ppm=ppm, band_index=i, n_bands=n_bands,
+            depth=depth, band_mask=masks[i], allowed=allowed, weight=weight,
+            tone=tone, darkness=darkness, darkness_seed=darkness_seed,
+            theta_raw=theta_raw, coherence=coherence,
+            min_darkness=style.min_darkness, border=border)
 
-        strokes = flow_hatch(
-            theta, darkness_seed, allowed,
-            spacing_min=style.spacing_min_mm * ppm,
-            spacing_max=style.spacing_max_mm * ppm,
-            step=style.step_mm * ppm,
-            max_len=style.max_len_mm * ppm,
-            min_len=style.min_len_mm * ppm,
-            min_darkness=style.min_darkness,
-            max_strokes=style.max_strokes,
-            seed_attempts=style.seed_attempts,
-            wobble_amp=style.wobble_amp_mm * ppm,
-            wobble_wavelength=style.wobble_wavelength_mm * ppm,
-            rng=rng)
-        print(f"  hatch: {len(strokes)} strokes")
+        strokes = []
+        for spec in style.generators:
+            got = dispatch(ctx, spec, rng)
+            print(f"  {spec.get('type')}: {len(got)} strokes")
+            strokes.extend(got)
 
-        if style.cross_hatch:
-            dk2 = np.clip((darkness_seed - style.cross_hatch_threshold)
-                          / max(1 - style.cross_hatch_threshold, 1e-6), 0, 1)
-            theta2 = F.blend_orientation(
-                theta_raw, coherence,
-                math.radians(style.bias_angle_deg + style.cross_hatch_angle_deg),
-                min(1.0, style.bias_strength + 0.35))
-            cross = flow_hatch(
-                theta2, dk2, allowed,
-                spacing_min=style.spacing_min_mm * ppm * 1.15,
-                spacing_max=style.spacing_max_mm * ppm,
-                step=style.step_mm * ppm,
-                max_len=style.max_len_mm * ppm,
-                min_len=style.min_len_mm * ppm,
-                min_darkness=0.05,
-                max_strokes=style.max_strokes // 2,
-                seed_attempts=style.seed_attempts // 2,
-                wobble_amp=style.wobble_amp_mm * ppm,
-                wobble_wavelength=style.wobble_wavelength_mm * ppm,
-                rng=rng)
-            print(f"  cross-hatch: {len(cross)} strokes")
-            strokes += cross
-
-        if style.iso_depth_lines > 0:
-            tone_ok = darkness > style.min_darkness * 0.6
-            iso = iso_depth_contours(
-                depth, masks[i], allowed & tone_ok & ~border, style.iso_depth_lines,
-                min_len=style.min_len_mm * 1.5 * ppm,
-                sample_interval=style.step_mm * ppm,
-                rng=rng,
-                wobble_amp=style.wobble_amp_mm * 0.5 * ppm,
-                wobble_wavelength=style.wobble_wavelength_mm * ppm)
-            print(f"  iso-depth: {len(iso)} lines")
-            strokes += iso
-
-        if style.silhouette:
-            sil = silhouette_lines(masks[i],
-                                   min_len=style.min_len_mm * 4 * ppm,
-                                   sample_interval=style.step_mm * ppm,
-                                   smooth_px=1.0 * ppm)
-            blocked = border | B.reservation_mask(masks, i, halo_px)
-            sil = [r for s in sil for r in clip_by_mask(s, blocked)]
-            print(f"  silhouette: {len(sil)} lines")
-            strokes += sil
-
-        strokes = [s for s in strokes if polyline_length(s) >= style.min_len_mm * ppm * 0.8]
-        paths_mm = [paper.to_mm(s) for s in sort_paths(strokes)]
+        strokes = [st for st in strokes if polyline_length(st) > 0.1]
+        paths_mm = [paper.to_mm(st) for st in sort_paths(strokes)]
         layers_mm.append((style.name, paths_mm))
 
         stem = f"{i:02d}_{style.name}_{style.tool}"
         write_svg(out / f"{stem}.svg", [(style.name, paths_mm)],
                   cfg.paper_w, cfg.paper_h,
-                  colors=["#000000"], widths=[0.4])
+                  colors=["#f5f2e8" if cfg.invert else "#000000"], widths=[0.4],
+                  background="#111111" if cfg.invert else "white")
         stats = write_gcode(out / f"{stem}.gcode", paths_mm,
                             feed=style.feed, travel_feed=cfg.travel_feed,
                             name=stem)
@@ -166,10 +129,15 @@ def run(image_path: str, out_dir: str, cfg, seed: int = 7,
               f"~{stats['est_min']}min")
 
     n = len(layers_mm)
+    svg_colors = SVG_COLORS_INV if cfg.invert else SVG_COLORS
+    prev_colors = PREVIEW_COLORS_INV if cfg.invert else PREVIEW_COLORS
+    widths = preview_widths(cfg.styles)
     write_svg(out / "combined.svg", layers_mm, cfg.paper_w, cfg.paper_h,
-              colors=SVG_COLORS[:n], widths=PREVIEW_WIDTHS[:n])
+              colors=svg_colors[:n], widths=widths,
+              background="#111111" if cfg.invert else "white")
     render_preview(out / "preview.png", layers_mm, cfg.paper_w, cfg.paper_h,
-                   colors=PREVIEW_COLORS[:n], widths_mm=PREVIEW_WIDTHS[:n])
+                   colors=prev_colors[:n], widths_mm=widths,
+                   invert=cfg.invert)
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2))
     print(f"done -> {out}")
     return manifest

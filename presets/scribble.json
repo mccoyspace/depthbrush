@@ -1,0 +1,40 @@
+{
+  "description": "Nervous graphite energy: momentum random-walks attracted to darkness, loops and bursts, spiral fills in the deepest blacks (after Penck '75 / Basquiat).",
+  "config": {"band_feather": 0.07, "reserve_halo_mm": 1.5, "invert": false},
+  "bands": [
+    {
+      "name": "far", "tool": "brush", "feed": 1400,
+      "blur_mm": 7.0, "darkness_gamma": 1.6, "min_darkness": 0.15,
+      "generators": [
+        {"type": "scribble", "step_mm": 1.4, "max_len_mm": 320.0,
+         "min_len_mm": 25.0, "agitation": 0.22, "darkness_pull": 0.4,
+         "spacing_min_mm": 3.5, "spacing_max_mm": 9.0,
+         "max_strokes": 260, "seed_attempts": 7000}
+      ]
+    },
+    {
+      "name": "mid", "tool": "brush", "feed": 1700,
+      "blur_mm": 2.5, "darkness_gamma": 1.35, "min_darkness": 0.11,
+      "generators": [
+        {"type": "scribble", "step_mm": 1.0, "max_len_mm": 140.0,
+         "min_len_mm": 12.0, "agitation": 0.5, "darkness_pull": 0.55,
+         "spacing_min_mm": 2.2, "spacing_max_mm": 6.0,
+         "max_strokes": 1200, "seed_attempts": 13000}
+      ]
+    },
+    {
+      "name": "near", "tool": "pen", "feed": 2600,
+      "blur_mm": 0.8, "darkness_gamma": 1.15, "min_darkness": 0.08,
+      "generators": [
+        {"type": "scribble", "step_mm": 0.8, "max_len_mm": 70.0,
+         "min_len_mm": 5.0, "agitation": 0.95, "darkness_pull": 0.7,
+         "spacing_min_mm": 1.2, "spacing_max_mm": 3.4,
+         "max_strokes": 4200, "seed_attempts": 22000,
+         "spiral_fill": true, "spiral_threshold": 0.68,
+         "spiral_pitch_mm": 1.5, "spiral_min_mm": 4.0},
+        {"type": "contour", "passes": 2, "offset_mm": 1.0, "trim": 0.5,
+         "min_len_mm": 12.0, "step_mm": 0.8, "smooth_mm": 1.2}
+      ]
+    }
+  ]
+}
