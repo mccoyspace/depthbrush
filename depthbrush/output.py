@@ -76,14 +76,20 @@ def render_preview(path, layers, paper_w, paper_h, px_per_mm=4.0,
     cv2.imwrite(str(path), (canvas[:, :, ::-1] * 255).astype(np.uint8))
 
 
-def write_gcode(path, paths_mm, *, feed, travel_feed=6000.0, name=""):
+def write_gcode(path, paths_mm, *, feed, travel_feed=6000.0, name="",
+                swap_xy=False):
     """Intent-level G-code: server owns Z, brush transitions, and heightmap.
 
     Vocabulary per the GRBL plotter server doc: M3 S1 = brush down, M5 = up.
+    swap_xy=True emits X<paper.y> Y<paper.x> for plotters whose axes are
+    physically swapped relative to the paper (big plotter: X vertical, Y
+    horizontal, origin still lower-left).
     """
+    ax, ay = (1, 0) if swap_xy else (0, 1)
     lines = [
         f"; depthbrush layer: {name}",
         f"; paths: {len(paths_mm)}",
+        f"; axes: {'swapped (X=paper.y, Y=paper.x)' if swap_xy else 'standard'}",
         "G21",
         "G90",
         "G54",
@@ -94,11 +100,14 @@ def write_gcode(path, paths_mm, *, feed, travel_feed=6000.0, name=""):
     travel_len = 0.0
     cur = np.array([0.0, 0.0])
     for p in paths_mm:
-        lines.append(f"G0 X{p[0, 0]:.2f} Y{p[0, 1]:.2f}")
+        lines.append(f"G0 X{p[0, ax]:.2f} Y{p[0, ay]:.2f}")
         travel_len += float(np.hypot(*(p[0] - cur)))
         lines.append("M3 S1")
-        for x, y in p[1:]:
-            lines.append(f"G1 X{x:.2f} Y{y:.2f}")
+        # the server's brush-down injects `G1 Z.. F<brush_down_feed>`, which
+        # overwrites GRBL's modal feed — restate ours on the first draw move
+        for k, pt in enumerate(p[1:]):
+            f = f" F{feed:.0f}" if k == 0 else ""
+            lines.append(f"G1 X{pt[ax]:.2f} Y{pt[ay]:.2f}{f}")
         d = np.diff(p, axis=0)
         draw_len += float(np.sqrt((d ** 2).sum(axis=1)).sum())
         lines.append("M5")

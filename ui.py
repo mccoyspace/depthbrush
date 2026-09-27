@@ -63,7 +63,7 @@ def defaults():
         "config": {k: getattr(cfg, k) for k in
                    ("paper_w", "paper_h", "margin", "band_feather",
                     "reserve_halo_mm", "invert", "focus", "defocus_strength",
-                    "px_per_mm", "mark_scale")},
+                    "px_per_mm", "mark_scale", "swap_xy")},
         "bands": [dataclasses.asdict(s) for s in cfg.styles],
         "band_fields": BAND_FIELDS,
         "gen_defaults": DEFAULT_PARAMS,
@@ -115,6 +115,7 @@ def render():
         defocus_strength=float(c.get("defocus_strength", 1.0)),
         px_per_mm=float(c.get("px_per_mm", 1.0)),
         mark_scale=float(c.get("mark_scale", 1.0)),
+        swap_xy=bool(c.get("swap_xy", False)),
         styles=styles,
     )
 

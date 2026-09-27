@@ -37,6 +37,10 @@ def run(image_path: str, out_dir: str, cfg, seed: int = 7,
     rng = np.random.default_rng(seed)
     if cache_dir is None:
         cache_dir = str(out / ".cache")
+    # layer filenames depend on band name + tool, so a re-render with a
+    # different preset would otherwise leave stale layers beside new ones
+    for old in list(out.glob("[0-9][0-9]_*.svg")) + list(out.glob("[0-9][0-9]_*.gcode")):
+        old.unlink()
 
     # --- working resolution: fit image into drawable area at px_per_mm ---
     probe = cv2.imread(image_path)
@@ -128,7 +132,7 @@ def run(image_path: str, out_dir: str, cfg, seed: int = 7,
                   background="#111111" if cfg.invert else "white")
         stats = write_gcode(out / f"{stem}.gcode", paths_mm,
                             feed=style.feed, travel_feed=cfg.travel_feed,
-                            name=stem)
+                            name=stem, swap_xy=cfg.swap_xy)
         stats.update({"band": i, "name": style.name, "tool": style.tool,
                       "feed": style.feed})
         manifest["layers"].append(stats)

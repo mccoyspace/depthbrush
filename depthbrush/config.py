@@ -108,6 +108,9 @@ class Config:
 
     # g-code
     travel_feed: float = 6000.0
+    # swap X and Y in emitted g-code (big plotter has its axes rotated 90°:
+    # machine X is vertical, machine Y is horizontal, origin still lower-left)
+    swap_xy: bool = False
     depth_model: str = "depth-anything/Depth-Anything-V2-Small-hf"
 
     styles: list = field(default_factory=list)  # list[BandStyle], far -> near
