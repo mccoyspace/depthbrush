@@ -354,6 +354,11 @@ function buildSummaries() {
   });
 }
 
+// swap X/Y is a property of the plotter this browser drives: remember it
+try { $('swap_xy').checked = localStorage.getItem('depthbrush.swap_xy') === '1'; } catch (e) {}
+$('swap_xy').onchange = () => {
+  try { localStorage.setItem('depthbrush.swap_xy', $('swap_xy').checked ? '1' : '0'); } catch (e) {}
+};
 $('focus_on').onchange = () => { $('focus').disabled = !$('focus_on').checked; };
 $('focus').oninput = () => { $('focusval').textContent = parseFloat($('focus').value).toFixed(2); };
 $('file').onchange = async () => {

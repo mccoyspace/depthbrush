@@ -118,6 +118,17 @@ Plot back-to-front with registration unchanged between passes:
 2. mid layer — brush, stronger ink
 3. near layer — pen / fine brush, full strength
 
+**Swapped-axis plotters** (the big plotter: machine X vertical, Y
+horizontal, origin lower-left): use `--swap-xy` on the CLI or tick
+*swap X/Y in g-code* in the UI, which remembers the setting per browser.
+Enter paper size as the paper is viewed; the swap happens only in the
+emitted G-code. Line 3 of each `.gcode` file records the axis convention
+(`; axes: swapped …` or `; axes: standard`) — check it before streaming.
+
+Each stroke restates the layer feed on its first draw move, because the
+server's brush-down injects `G1 Z.. F<brush_down_feed>` and GRBL's feed is
+modal.
+
 Stream each pass either from the server UI (local file) or remotely:
 
 ```bash
