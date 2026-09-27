@@ -28,6 +28,10 @@ presets/learned/
 .vscode/
 
 # root-level photos are private unless explicitly allowed
-/*.jpg
-/*.jpeg
+*.jpg
+*.jpeg
+*.png
+*.webp
+*.tif
+*.tiff
 !/garden.jpg
