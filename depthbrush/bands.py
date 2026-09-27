@@ -4,10 +4,51 @@ import cv2
 import numpy as np
 
 
-def band_thresholds(depth: np.ndarray, n_bands: int) -> list:
-    """Quantile thresholds so each band holds a meaningful share of the image."""
-    qs = [i / n_bands for i in range(1, n_bands)]
-    return [float(np.quantile(depth, q)) for q in qs]
+def band_thresholds(depth: np.ndarray, n_bands: int, snap_window: float = 0.2,
+                    min_share: float = 0.05, valley_ratio: float = 0.4,
+                    deep_ratio: float = 0.1) -> list:
+    """Band cuts: start at equal-count quantiles, then snap each cut to the
+    lowest-density valley of the depth histogram nearby.
+
+    Pure quantiles fail on clumpy depth (a flat sky piled at depth ~0): the
+    cut lands inside the clump's noise and the band dissolves into speckle.
+    Valleys are where one object's depth ends and the next begins; on smooth
+    depth there is no valley to prefer, and cuts stay near the quantiles.
+    """
+    bins = 200
+    hist, edges = np.histogram(depth, bins=bins, range=(0.0, 1.0))
+    dens = cv2.GaussianBlur(hist.astype(np.float32).reshape(1, -1), (0, 0), 2.0).ravel()
+    dens /= dens.sum()
+    centers = (edges[:-1] + edges[1:]) / 2
+    cdf = np.cumsum(hist) / hist.sum()
+
+    cuts, prev = [], 0.0
+    for i in range(1, n_bands):
+        t0 = float(np.quantile(depth, i / n_bands))
+        near = np.abs(centers - t0) <= snap_window
+        # keep every band at least min_share of the image
+        q = i / n_bands
+        ok = near & (cdf >= prev + min_share) & (cdf <= 1 - (n_bands - i) * min_share)
+        if cuts:
+            ok &= centers > cuts[-1]
+        shift = np.abs(cdf - q)
+        here = dens[min(int(t0 * bins), bins - 1)]
+        t = t0
+        # a shallow valley may move the cut by up to half a band's worth of
+        # pixels; a deep gap (e.g. flat sky vs. the object in front of it)
+        # may move it a full band. Ripples in smooth depth move nothing.
+        for ratio, cap in ((deep_ratio, 1.0 / n_bands), (valley_ratio, 0.5 / n_bands)):
+            cand = ok & (shift <= cap)
+            if not cand.any():
+                continue
+            cost = dens * (1.0 + np.abs(centers - t0) / snap_window)
+            j = int(np.argmin(np.where(cand, cost, np.inf)))
+            if dens[j] < ratio * here:
+                t = float(centers[j])
+                break
+        cuts.append(t)
+        prev = float(np.mean(depth < t))
+    return cuts
 
 
 def band_index_map(depth: np.ndarray, thresholds: list) -> np.ndarray:
