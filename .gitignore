@@ -35,3 +35,6 @@ presets/learned/
 *.tif
 *.tiff
 !/garden.jpg
+
+# local tool config
+.claude/
