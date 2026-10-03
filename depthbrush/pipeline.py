@@ -71,7 +71,16 @@ def run(image_path: str, out_dir: str, cfg, seed: int = 7,
                                                tensor_sigma_px=2.5 * ppm)
 
     n_bands = cfg.n_bands
-    thresholds = B.band_thresholds(depth, n_bands)
+    if cfg.band_cuts:
+        cuts = sorted(float(c) for c in cfg.band_cuts)
+        if len(cuts) != n_bands - 1:
+            raise ValueError(f"band cuts: need {n_bands - 1} values for "
+                             f"{n_bands} bands, got {len(cuts)}")
+        thresholds = cuts
+        print(f"band cuts (manual): {[round(c, 3) for c in cuts]}")
+    else:
+        thresholds = B.band_thresholds(depth, n_bands)
+        print(f"band cuts (auto): {[round(c, 3) for c in thresholds]}")
     idx_map = B.band_index_map(depth, thresholds)
     masks = B.band_masks(idx_map, n_bands)
     halo_px = cfg.reserve_halo_mm * ppm

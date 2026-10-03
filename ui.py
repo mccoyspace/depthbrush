@@ -109,6 +109,7 @@ def render():
         margin=float(c.get("margin", 25)),
         band_feather=float(c.get("band_feather", 0.06)),
         reserve_halo_mm=float(c.get("reserve_halo_mm", 2.0)),
+        band_cuts=[float(v) for v in c["band_cuts"]] if c.get("band_cuts") else None,
         invert=bool(c.get("invert", False)),
         tone_source=c.get("tone_source") or None,
         focus=None if c.get("focus") is None else float(c["focus"]),

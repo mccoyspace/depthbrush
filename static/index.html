@@ -128,6 +128,9 @@ details.band .fields { padding: 4px 12px 10px; }
     <legend>depth layering</legend>
     <div class="row"><label>feather</label><input type="number" id="band_feather" value="0.06" step="0.01"></div>
     <div class="row"><label>reserve halo (mm)</label><input type="number" id="reserve_halo_mm" value="2" step="0.5"></div>
+    <div class="row"><label title="where depth is split into bands (0 = farthest, 1 = nearest). Untick auto to set them yourself; check the Bands tab.">band cuts</label>
+      <span style="color:var(--dim);font-size:11px">auto</span><input type="checkbox" id="cuts_auto" checked></div>
+    <div id="cutSliders"></div>
     <div class="row"><label>invert (light on black)</label><input type="checkbox" id="invert"></div>
     <div class="row"><label>focal plane</label><input type="checkbox" id="focus_on">
       <input type="range" id="focus" min="0" max="1" step="0.01" value="0.8" disabled>
@@ -275,6 +278,7 @@ function paramRow(obj, key, val, onchange) {
 }
 
 function buildBandPanels() {
+  buildCutSliders();
   const holder = $('bands');
   holder.innerHTML = '';
   state.bands.forEach((b, i) => {
@@ -359,6 +363,30 @@ try { $('swap_xy').checked = localStorage.getItem('depthbrush.swap_xy') === '1';
 $('swap_xy').onchange = () => {
   try { localStorage.setItem('depthbrush.swap_xy', $('swap_xy').checked ? '1' : '0'); } catch (e) {}
 };
+function buildCutSliders(values) {
+  const n = Math.max(state.bands.length - 1, 0);
+  const holder = $('cutSliders');
+  const old = [...holder.querySelectorAll('input[type=range]')].map(r => parseFloat(r.value));
+  const vals = values || (old.length === n ? old
+               : Array.from({length: n}, (_, i) => (i + 1) / (n + 1)));
+  holder.innerHTML = '';
+  vals.forEach((v, i) => {
+    const row = document.createElement('div'); row.className = 'row';
+    const lab = document.createElement('label');
+    lab.textContent = `${state.bands[i] ? state.bands[i].name : i} | ${state.bands[i+1] ? state.bands[i+1].name : i+1}`;
+    const r = document.createElement('input'); r.type = 'range';
+    r.min = 0; r.max = 1; r.step = 0.005; r.value = v; r.disabled = $('cuts_auto').checked;
+    const out = document.createElement('span'); out.style.cssText = 'width:38px;color:var(--dim)';
+    out.textContent = (+v).toFixed(3);
+    r.oninput = () => { out.textContent = (+r.value).toFixed(3); };
+    r.onchange = () => render();
+    row.appendChild(lab); row.appendChild(r); row.appendChild(out); holder.appendChild(row);
+  });
+}
+$('cuts_auto').onchange = () => {
+  $('cutSliders').querySelectorAll('input').forEach(r => r.disabled = $('cuts_auto').checked);
+  if ($('cuts_auto').checked) render();
+};
 $('focus_on').onchange = () => { $('focus').disabled = !$('focus_on').checked; };
 $('focus').oninput = () => { $('focusval').textContent = parseFloat($('focus').value).toFixed(2); };
 $('file').onchange = async () => {
@@ -393,6 +421,8 @@ async function render() {
    'reserve_halo_mm','defocus_strength'].forEach(k => cfg[k] = parseFloat($(k).value));
   cfg.invert = $('invert').checked;
   cfg.swap_xy = $('swap_xy').checked;
+  cfg.band_cuts = $('cuts_auto').checked ? null
+    : [...$('cutSliders').querySelectorAll('input[type=range]')].map(r => parseFloat(r.value));
   cfg.focus = $('focus_on').checked ? parseFloat($('focus').value) : null;
   cfg.tone_source = $('toneFrom').value.trim() || null;
 
@@ -407,6 +437,7 @@ async function render() {
     if (d.error) { setStatus(d.error, true); return; }
     state.session = d.session; state.files = d.files; state.layerSvgs = d.layer_svgs;
     state.invert = !!(d.manifest && d.manifest.invert);
+    if (d.manifest && d.manifest.thresholds) buildCutSliders(d.manifest.thresholds);
     const total = d.manifest.layers.reduce((a, l) => a + l.est_min, 0);
     const draw = d.manifest.layers.reduce((a, l) => a + l.draw_mm, 0);
     $('stats').innerHTML = d.manifest.layers.map(l =>

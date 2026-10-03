@@ -87,6 +87,9 @@ class Config:
     # bands / layering
     band_feather: float = 0.06      # depth-units of dithered boundary
     reserve_halo_mm: float = 2.0    # untouched halo around nearer bands
+    # manual band cuts in depth units (0=far, 1=near), far->near, one fewer
+    # than the band count; None = automatic split
+    band_cuts: list | None = None
 
     # invert: draw the LIGHTS (white ink on black paper — excavation)
     invert: bool = False

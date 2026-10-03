@@ -40,6 +40,9 @@ def main():
                     help="reservation halo around nearer bands (mm)")
     ap.add_argument("--invert", action="store_true", default=None,
                     help="draw the lights (white ink on black paper)")
+    ap.add_argument("--cuts", default=None, metavar="D1,D2",
+                    help="manual band cuts in depth units (0=far, 1=near), "
+                         "far->near, e.g. '0.11,0.58'; default automatic")
     ap.add_argument("--swap-xy", action="store_true", default=None,
                     help="swap X/Y in emitted g-code (big plotter: machine X "
                          "vertical, Y horizontal, origin lower-left)")
@@ -69,6 +72,7 @@ def main():
         args.preset, n_bands=args.bands,
         paper_w=w, paper_h=h, margin=args.margin,
         band_feather=args.feather, reserve_halo_mm=args.halo,
+        band_cuts=[float(v) for v in args.cuts.split(',')] if args.cuts else None,
         invert=args.invert, tone_source=args.tone_from, swap_xy=args.swap_xy,
         focus=args.focus, defocus_strength=args.defocus,
         px_per_mm=args.ppm, mark_scale=args.scale)
