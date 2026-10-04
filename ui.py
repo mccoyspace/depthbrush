@@ -34,7 +34,8 @@ app = Flask(__name__)
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp", ".webp"}
 
 # band-level physical fields exposed in the UI, in display order
-BAND_FIELDS = ["tool", "feed", "blur_mm", "darkness_gamma", "min_darkness"]
+BAND_FIELDS = ["tool", "feed", "blur_mm", "darkness_gamma", "min_darkness",
+               "thin_pct"]
 
 
 def session_dir(image_path: str) -> Path:
@@ -97,7 +98,8 @@ def render():
     c = req.get("config", {})
     styles = []
     band_field_types = {"name": str, "tool": str, "feed": float, "blur_mm": float,
-                        "darkness_gamma": float, "min_darkness": float}
+                        "darkness_gamma": float, "min_darkness": float,
+                        "thin_pct": float}
     for b in req.get("bands", []):
         kwargs = {k: t(b[k]) for k, t in band_field_types.items() if k in b}
         kwargs["generators"] = b.get("generators", [])

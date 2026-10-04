@@ -247,6 +247,18 @@ function inputFor(obj, key, val, onchange) {
   if (typeof val === 'boolean') {
     inp = document.createElement('input'); inp.type = 'checkbox'; inp.checked = val;
     inp.onchange = () => { obj[key] = inp.checked; if (onchange) onchange(); };
+  } else if (key === 'thin_pct') {
+    // slider: drop this % of the band's strokes; re-render on release
+    inp = document.createElement('span');
+    inp.style.cssText = 'display:flex;gap:6px;align-items:center;flex:1.6';
+    const r = document.createElement('input'); r.type = 'range';
+    r.min = 0; r.max = 90; r.step = 5; r.value = val || 0; r.style.flex = '1';
+    const out = document.createElement('span');
+    out.style.cssText = 'width:34px;color:var(--dim);text-align:right';
+    out.textContent = `${r.value}%`;
+    r.oninput = () => { out.textContent = `${r.value}%`; };
+    r.onchange = () => { obj[key] = parseFloat(r.value); render(); };
+    inp.appendChild(r); inp.appendChild(out);
   } else if (key === 'tool') {
     inp = document.createElement('select');
     ['brush', 'pen'].forEach(t => { const o = document.createElement('option');

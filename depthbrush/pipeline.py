@@ -131,6 +131,14 @@ def run(image_path: str, out_dir: str, cfg, seed: int = 7,
             strokes.extend(got)
 
         strokes = [st for st in strokes if polyline_length(st) > 0.1]
+        n_before = len(strokes)
+        if style.thin_pct > 0 and strokes:
+            # each stroke gets a fixed rank from its own generator, so raising
+            # thin_pct removes more of the same strokes instead of reshuffling
+            ranks = np.random.default_rng([seed, i, 7]).random(len(strokes))
+            cut = min(style.thin_pct, 100.0) / 100.0
+            strokes = [st for st, r in zip(strokes, ranks) if r >= cut]
+            print(f"  thin {style.thin_pct:g}%: kept {len(strokes)} of {n_before}")
         paths_mm = [paper.to_mm(st) for st in sort_paths(strokes)]
         layers_mm.append((style.name, paths_mm))
 
@@ -143,7 +151,8 @@ def run(image_path: str, out_dir: str, cfg, seed: int = 7,
                             feed=style.feed, travel_feed=cfg.travel_feed,
                             name=stem, swap_xy=cfg.swap_xy)
         stats.update({"band": i, "name": style.name, "tool": style.tool,
-                      "feed": style.feed})
+                      "feed": style.feed, "thin_pct": style.thin_pct,
+                      "paths_before_thin": n_before})
         manifest["layers"].append(stats)
         print(f"  -> {stats['paths']} paths, {stats['draw_mm']}mm drawn, "
               f"~{stats['est_min']}min")

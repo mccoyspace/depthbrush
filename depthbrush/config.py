@@ -26,6 +26,7 @@ class BandStyle:
     blur_mm: float = 0.0            # gaussian blur of the tone image
     darkness_gamma: float = 1.2     # contrast shaping of the ink-demand field
     min_darkness: float = 0.07      # leave paper untouched below this
+    thin_pct: float = 0.0           # randomly drop this % of the band's strokes
 
     # mark vocabulary: list of {"type": <generator>, ...params-in-mm}
     generators: list = field(default_factory=list)
