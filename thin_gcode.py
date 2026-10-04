@@ -17,9 +17,16 @@ Examples:
   python3 thin_gcode.py out/mariner03/00_far_brush.gcode --drop 30
   python3 thin_gcode.py out/mariner03/*.gcode --drop 25 --seed 4
   python3 thin_gcode.py layer.gcode --drop 50 -o layer_half.gcode
+  python3 thin_gcode.py out/mariner03/*.gcode --drop 30 --svg   # + preview SVGs
+
+--svg writes a matching SVG of the kept strokes. Paper size comes from
+--paper, else the manifest.json depthbrush writes beside the layers, else
+the strokes' bounding box. Swapped-axis files (header "; axes: swapped")
+are drawn back in paper orientation.
 """
 
 import argparse
+import json
 import random
 import re
 import sys
@@ -60,7 +67,53 @@ def split_strokes(lines):
     return header, strokes, footer
 
 
-def thin(path: Path, drop_pct: float, rng: random.Random, out: Path) -> tuple:
+MOVE = re.compile(r"^G[01]\s+X(-?[\d.]+)\s+Y(-?[\d.]+)", re.I)
+
+
+def stroke_points(stroke, swapped):
+    """Paper-space (x, y) points of one stroke, from its G0 and G1 moves."""
+    pts = []
+    for line in stroke:
+        m = MOVE.match(line.strip())
+        if m:
+            a, b = float(m[1]), float(m[2])
+            pts.append((b, a) if swapped else (a, b))
+    return pts
+
+
+def paper_size(path: Path, paper: str | None, all_pts):
+    if paper:
+        w, h = (float(v) for v in paper.lower().split("x"))
+        return w, h
+    manifest = path.with_name("manifest.json")
+    if manifest.exists():
+        try:
+            w, h = json.loads(manifest.read_text())["paper"]
+            return float(w), float(h)
+        except (KeyError, ValueError, TypeError):
+            pass
+    xs = [p[0] for p in all_pts] or [0.0]
+    ys = [p[1] for p in all_pts] or [0.0]
+    return max(xs) + 10.0, max(ys) + 10.0
+
+
+def write_svg(out: Path, strokes, swapped, w, h, width_mm=0.4):
+    parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{w:g}mm" '
+             f'height="{h:g}mm" viewBox="0 0 {w:g} {h:g}">',
+             f'<rect width="{w:g}" height="{h:g}" fill="white"/>',
+             f'<g fill="none" stroke="#000" stroke-width="{width_mm}" '
+             f'stroke-linecap="round" stroke-linejoin="round">']
+    for s in strokes:
+        pts = stroke_points(s, swapped)
+        if len(pts) > 1:  # G-code y is up, SVG y is down
+            parts.append('<polyline points="' +
+                         " ".join(f"{x:.2f},{h - y:.2f}" for x, y in pts) + '"/>')
+    parts += ["</g>", "</svg>"]
+    out.write_text("\n".join(parts) + "\n")
+
+
+def thin(path: Path, drop_pct: float, rng: random.Random, out: Path,
+         svg: bool = False, paper: str | None = None) -> tuple:
     lines = path.read_text().splitlines()
     header, strokes, footer = split_strokes(lines)
     if not strokes:
@@ -76,6 +129,11 @@ def thin(path: Path, drop_pct: float, rng: random.Random, out: Path) -> tuple:
         body.extend(s)
     body.extend(footer)
     out.write_text("\n".join(body) + "\n")
+    if svg:
+        swapped = any("axes: swapped" in h for h in header)
+        all_pts = [p for st in strokes for p in stroke_points(st, swapped)]
+        w, h = paper_size(path, paper, all_pts)
+        write_svg(out.with_suffix(".svg"), kept, swapped, w, h)
     return len(strokes), len(kept)
 
 
@@ -90,6 +148,11 @@ def main():
     ap.add_argument("-o", "--out", type=Path, default=None,
                     help="output file (single input only); default "
                          "<name>_drop<PCT>.gcode beside the input")
+    ap.add_argument("--svg", action="store_true",
+                    help="also write a matching SVG of the kept strokes")
+    ap.add_argument("--paper", default=None, metavar="WxH",
+                    help="paper size in mm for --svg (default: from "
+                         "manifest.json beside the input, else stroke extents)")
     args = ap.parse_args()
 
     if not 0 <= args.drop <= 100:
@@ -104,11 +167,12 @@ def main():
             continue
         out = args.out or f.with_name(f"{f.stem}_drop{args.drop:g}{f.suffix}")
         try:
-            total, kept = thin(f, args.drop, rng, out)
+            total, kept = thin(f, args.drop, rng, out, args.svg, args.paper)
         except (OSError, ValueError) as e:
             print(f"error: {e}", file=sys.stderr)
             sys.exit(1)
-        print(f"{f.name}: kept {kept} of {total} strokes -> {out}")
+        extra = f" (+ {out.with_suffix('.svg').name})" if args.svg else ""
+        print(f"{f.name}: kept {kept} of {total} strokes -> {out}{extra}")
 
 
 if __name__ == "__main__":
